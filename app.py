@@ -2,32 +2,54 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 st.set_page_config(page_title="منصة المنقب الهندسي", page_icon="🛢️", layout="wide")
 
-# 1. قاعدة بيانات المستخدمين مع تاريخ التسجيل وحالة الاشتراك
+# 1. قاعدة البيانات في الذاكرة
 if "db_users" not in st.session_state:
     st.session_state["db_users"] = {
-        "mohammed": {
-            "pass": "123", 
+        "admin": {
+            "pass": "1234", 
             "name": "المهندس محمد", 
             "join_date": datetime.now().date(),
-            "is_paid": False  # هل قام بالدفع؟
+            "is_paid": True
         }
     }
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-# 2. شاشة تسجيل الدخول وإنشاء حساب
+# 2. شاشة تسجيل الدخول وإنشاء الحساب
 if not st.session_state["authenticated"]:
     st.title("🔑 منصة المنقب الهندسي")
-    tab1, tab2 = st.tabs(["تسجيل الدخول", "إنشاء حساب جديد (تجربة مجانية 30 يوم)"])
+    
+    tab1, tab2 = st.tabs(["إنشاء حساب جديد (تجربة مجانية 30 يوم)", "تسجيل الدخول"])
     
     with tab1:
-        username = st.text_input("اسم المستخدم أو البريد")
-        password = st.text_input("كلمة المرور", type="password")
+        new_user = st.text_input("اختر اسم مستخدم (مثل: engineer1)")
+        new_pass = st.text_input("اختر كلمة مرور", type="password")
+        new_name = st.text_input("الاسم الكامل")
+        
+        if st.button("🚀 إنشاء حساب مجاني والدخول"):
+            if new_user and new_pass:
+                st.session_state["db_users"][new_user] = {
+                    "pass": new_pass,
+                    "name": new_name if new_name else new_user,
+                    "join_date": datetime.now().date(),
+                    "is_paid": False
+                }
+                st.session_state["authenticated"] = True
+                st.session_state["user_id"] = new_user
+                st.success("تم إنشاء الحساب وتفعيله مجاناً لمدة 30 يوماً!")
+                st.rerun()
+            else:
+                st.warning("يرجى ملء كافة الحقول (اسم المستخدم وكلمة المرور).")
+
+    with tab2:
+        username = st.text_input("اسم المستخدم", value="admin")
+        password = st.text_input("كلمة المرور", type="password", value="1234")
+        
         if st.button("تسجيل الدخول"):
             users = st.session_state["db_users"]
             if username in users and users[username]["pass"] == password:
@@ -36,24 +58,12 @@ if not st.session_state["authenticated"]:
                 st.rerun()
             else:
                 st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
-                
-    with tab2:
-        new_user = st.text_input("اختر اسم مستخدم")
-        new_pass = st.text_input("اختر كلمة مرور", type="password")
-        new_name = st.text_input("الاسم الكامل")
-        if st.button("إنشاء حساب مجاني"):
-            if new_user and new_pass:
-                st.session_state["db_users"][new_user] = {
-                    "pass": new_pass,
-                    "name": new_name,
-                    "join_date": datetime.now().date(),
-                    "is_paid": False
-                }
-                st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول للاستمتاع بالفتـرة التجريبية (30 يوم).")
 
-# 3. الشاشة الرئيسية للمنصة بعد تسجيل الدخول
+# 3. الشاشة الرئيسية بعد الدخول
 else:
-    user_data = st.session_state["db_users"][st.session_state["user_id"]]
+    user_id = st.session_state.get("user_id", "admin")
+    user_data = st.session_state["db_users"].get(user_id, st.session_state["db_users"]["admin"])
+    
     join_date = user_data["join_date"]
     days_used = (datetime.now().date() - join_date).days
     days_left = max(0, 30 - days_used)
@@ -61,9 +71,8 @@ else:
 
     st.sidebar.title(f"مرحباً {user_data['name']}")
     
-    # عرض حالة الاشتراك في الشريط الجانبي
     if is_paid:
-        st.sidebar.success("👑 الحساب: مدفوع (مفعل مدى الحياة)")
+        st.sidebar.success("👑 الحساب: مدفوع (مفعل بالكامل)")
     elif days_left > 0:
         st.sidebar.info(f"⏳ تجربة مجانية: متبقي {days_left} يوم")
     else:
@@ -75,14 +84,13 @@ else:
         st.session_state["authenticated"] = False
         st.rerun()
 
-    # التحقق من صلاحية الوصول (مدفوع أو ضمن 30 يوم)
     has_access = is_paid or (days_left > 0)
 
     if page == "حاسبة OOIP":
         st.title("🛢️ حاسبة حجم النفط الأصلي (OOIP)")
         
         if not has_access:
-            st.warning("🔒 انتهت فترتك التجريبية (30 يوماً). يرجى الذهاب إلى صفحة (بوابة السداد والدفع) لتفعيل حسابك واستخدام الحاسبة.")
+            st.warning("🔒 انتهت فترتك التجريبية (30 يوماً). يرجى التوجه لصفحة بوابة السداد والدفع لتفعيل حسابك.")
         else:
             c1, c2 = st.columns(2)
             with c1:
@@ -120,19 +128,18 @@ else:
 
     elif page == "بوابة السداد والدفع":
         st.title("💳 وسائل الدفع وتفعيل الاشتراك")
-        st.write("احصل على وصول كامل وغير محدود لجميع أدوات التحليل المكمني.")
         
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("1. الدفع بالبطاقات البنكية")
             if st.button("دفع $15 بالبطاقة 💳"):
                 user_data["is_paid"] = True
-                st.success("تم تفعيل حسابك بنجاح!")
+                st.success("تم تفعيل الحساب بنجاح!")
                 st.rerun()
         with c2:
             st.subheader("2. الدفع بالعملات الرقمية")
             st.code("TRX-Wallet: TXXXXXX...")
             if st.button("تأكيد التحويل الرقمي ✅"):
                 user_data["is_paid"] = True
-                st.success("تم تفعيل حسابك بنجاح!")
+                st.success("تم تفعيل الحساب بنجاح!")
                 st.rerun()
