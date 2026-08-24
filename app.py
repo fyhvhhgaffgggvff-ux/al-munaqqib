@@ -87,3 +87,19 @@ else:
             st.subheader("2. الدفع بالعملات الرقمية (USDT)")
             st.code("TRX-Wallet: TXXXXXX...XXXXX", language="text")
             st.button("✅ تأكيد التحويل الرقمي")
+            # إضافة رسم بياني لتحليل الحساسية
+st.write("---")
+st.subheader("📊 تحليل حساسيات المكمن (Sensitivities)")
+
+porosity_range = np.linspace(0.05, 0.35, 50)
+stb_values = [(7758 * 500 * 30 * p * (1 - 0.25)) / 1.25 for p in porosity_range]
+
+fig, ax = plt.subplots()
+ax.plot(porosity_range * 100, stb_values, color="green", linewidth=2)
+ax.set_xlabel("Porosity (%)")
+ax.set_ylabel("STOIIP (STB)")
+ax.set_title("Effect of Porosity on STOIIP")
+ax.grid(True)
+
+st.pyplot(fig)
+
