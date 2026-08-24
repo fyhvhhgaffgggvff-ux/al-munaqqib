@@ -70,6 +70,18 @@ else:
         ooip = (7758 * A * h * phi * (1 - Sw)) / Bo
         st.markdown("---")
         st.metric("الاحتياطي المحسوب (STB):", f"{ooip:,.2f}")
+            # رسم منحنى الحساسية
+    porosity_range = np.linspace(0.05, 0.35, 50)
+    stb_values = [(7758 * A * h * p * (1 - Sw)) / Bo for p in porosity_range]
+    
+    fig, ax = plt.subplots()
+    ax.plot(porosity_range * 100, stb_values, color="green", linewidth=2)
+    ax.set_xlabel("Porosity (%)")
+    ax.set_ylabel("OOIP (STB)")
+    ax.set_title("Effect of Porosity on OOIP")
+    ax.grid(True)
+
+    st.pyplot(fig)
 
     elif page == "تقارير الحسابات":
         st.title("📄 تصدير البيانات والتقارير")
