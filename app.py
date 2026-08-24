@@ -74,6 +74,9 @@ else:
     porosity_range = np.linspace(0.05, 0.35, 50)
     stb_values = [(7758 * A * h * p * (1 - Sw)) / Bo for p in porosity_range]
     
+        porosity_range = np.linspace(0.05, 0.35, 50)
+    stb_values = [(7758 * A * h * p * (1 - Sw)) / Bo for p in porosity_range]
+
     fig, ax = plt.subplots()
     ax.plot(porosity_range * 100, stb_values, color="green", linewidth=2)
     ax.set_xlabel("Porosity (%)")
@@ -82,6 +85,9 @@ else:
     ax.grid(True)
 
     st.pyplot(fig)
+
+elif page == "تقارير الحسابات":
+
 
     elif page == "تقارير الحسابات":
         st.title("📄 تصدير البيانات والتقارير")
