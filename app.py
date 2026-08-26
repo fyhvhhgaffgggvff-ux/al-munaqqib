@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# لمسة تصميمية هادئة للبطاقات والأزرار
+# تنسيق البطاقات والمظهر
 st.markdown("""
     <style>
     .metric-card {
@@ -36,27 +36,56 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("⚡ منصة المُنقّب للهندسة والرفع الصناعي")
-st.caption("أداة متكاملة لتصميم مضخات SRP & ESP مدعومة باستشارات الذكاء الاصطناعي")
+st.caption("أداة متكاملة لتصميم أجهزة الرفع الصناعي مع ميزة استخراج البيانات الذكية")
 
 # ---------------------------------------------------------
-# الشريط الجانبي - مفتاح الذكاء الاصطناعي
+# الشريط الجانبي
 # ---------------------------------------------------------
 st.sidebar.header("🔑 إعدادات النظام")
 api_key = st.sidebar.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
 
 # ---------------------------------------------------------
-# الواجهة الرئيسية باستخدام التبويبات (Tabs)
+# الواجهة الرئيسية باستخدام التبويبات
 # ---------------------------------------------------------
-tab1, tab2, tab3 = st.tabs(["⚙️ تصميم SRP (المكبس)", "⚡ تصميم ESP (الغاطسة)", "🤖 المساعد الهندسي الذكي"])
+tab1, tab2, tab3 = st.tabs(["⚙️ تصميم SRP واستخراج البيانات", "⚡ تصميم ESP", "🤖 المساعد الهندسي الذكي"])
 
-# --- التبويب الأول: مضخات المكبس ---
+# --- التبويب الأول: مضخات المكبس مع استيراد الملفات ---
 with tab1:
-    st.subheader("حسابات مضخات القضبان الشفاطة (Sucker Rod Pump)")
+    st.subheader("حسابات مضخات المكبس (Sucker Rod Pump)")
     
+    # خيار تحديد طريقة إدخال البيانات
+    data_mode = st.radio("اختر طريقة إدخال البيانات:", ["إدخال يدوي ✍️", "رفع ملف بيانات (Excel / CSV) 📁"], horizontal=True)
+    
+    # قيم افتراضية
+    depth_val = 5000
+    flow_val = 250
+    
+    if data_mode == "رفع ملف بيانات (Excel / CSV) 📁":
+        uploaded_file = st.file_uploader("اختر ملف الإكسل أو CSV الخاص بالبئر:", type=["csv", "xlsx"])
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                
+                st.success("تم رفع الملف واستخراج البيانات بنجاح! 📊")
+                st.dataframe(df.head(3), use_container_width=True) # عرض أول 3 أعمدة
+                
+                # استخراج القيم تلقائياً إذا كانت الأعمدة موجودة في الملف
+                if 'Depth' in df.columns:
+                    depth_val = int(df['Depth'].iloc[0])
+                if 'FlowRate' in df.columns:
+                    flow_val = int(df['FlowRate'].iloc[0])
+                    
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+
+    st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-        depth_srp = st.number_input("عمق البئر (ft):", min_value=1000, max_value=15000, value=5000, step=500, key="d_srp")
-        flow_srp = st.number_input("معدل الإنتاج المطلوب (BPD):", min_value=10, max_value=2000, value=250, step=10, key="f_srp")
+        depth_srp = st.number_input("عمق البئر (ft):", min_value=1000, max_value=15000, value=depth_val, step=500, key="d_srp")
+        flow_srp = st.number_input("معدل الإنتاج المطلوب (BPD):", min_value=10, max_value=2000, value=flow_val, step=10, key="f_srp")
         sg_srp = st.number_input("الكثافة النوعية للسائل (Fluid SG):", min_value=0.5, max_value=1.5, value=1.00, step=0.05, key="sg_srp")
         
     with col2:
@@ -93,7 +122,6 @@ with tab1:
 # --- التبويب الثاني: المضخات الغاطسة ---
 with tab2:
     st.subheader("حسابات المضخات الكهربائية الغاطسة (ESP)")
-    
     col1, col2 = st.columns(2)
     with col1:
         depth_esp = st.number_input("عمق البئر (ft):", min_value=1000, max_value=20000, value=7000, step=500, key="d_esp")
@@ -131,12 +159,7 @@ with tab2:
 # --- التبويب الثالث: المساعد الذكي ---
 with tab3:
     st.subheader("🤖 استشارات الهندسة والرفع الصناعي")
-    
-    user_query = st.text_area(
-        "اطرح استفسارك الهندسي هنا:",
-        placeholder="مثال: كيف أتعامل مع انخفاض كفاءة المضخة الحجمية عند وجود غاز حر؟",
-        height=120
-    )
+    user_query = st.text_area("اطرح استفسارك الهندسي هنا:", height=120)
 
     if st.button("تحليل واستشارة الذكاء الاصطناعي 🧠", use_container_width=True):
         if not api_key:
