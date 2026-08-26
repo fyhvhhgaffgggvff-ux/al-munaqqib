@@ -4,131 +4,154 @@ import pandas as pd
 import google.generativeai as genai
 
 # ---------------------------------------------------------
-# إعدادات الصفحة والواجهة
+# إعدادات الصفحة والثيم العام
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="برنامج المُنقّب - تصميم أجهزة الرفع الصناعي",
-    page_icon="⚓",
+    page_title="منصة المُنقّب الهندسية",
+    page_icon="⚡",
     layout="wide"
 )
 
-st.title("⚓ برنامج المُنقّب - المساعد الهندسي الذكي")
-st.caption("برنامج حساب وتصميم أجهزة الرفع الصناعي والذكاء الاصطناعي")
+# لمسة تصميمية هادئة للبطاقات والأزرار
+st.markdown("""
+    <style>
+    .metric-card {
+        background-color: #1e293b;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #334155;
+        text-align: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .metric-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #38bdf8;
+    }
+    .metric-label {
+        font-size: 14px;
+        color: #94a3b8;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("⚡ منصة المُنقّب للهندسة والرفع الصناعي")
+st.caption("أداة متكاملة لتصميم مضخات SRP & ESP مدعومة باستشارات الذكاء الاصطناعي")
 
 # ---------------------------------------------------------
-# الشريط الجانبي (Sidebar)
+# الشريط الجانبي - مفتاح الذكاء الاصطناعي
 # ---------------------------------------------------------
-st.sidebar.header("🔑 إعدادات الذكاء الاصطناعي")
+st.sidebar.header("🔑 إعدادات النظام")
 api_key = st.sidebar.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
 
-st.sidebar.header("⚙️ خيارات النظام")
-lift_type = st.sidebar.selectbox(
-    "اختر نوع نظام الرفع الصناعي:",
-    ["مضخات المكبس (Sucker Rod Pump)", "(ESP) المضخات الغاطسة الكهربائية"]
-)
+# ---------------------------------------------------------
+# الواجهة الرئيسية باستخدام التبويبات (Tabs)
+# ---------------------------------------------------------
+tab1, tab2, tab3 = st.tabs(["⚙️ تصميم SRP (المكبس)", "⚡ تصميم ESP (الغاطسة)", "🤖 المساعد الهندسي الذكي"])
 
-# ---------------------------------------------------------
-# الواجهة الأولى: مضخات المكبس (Sucker Rod Pump)
-# ---------------------------------------------------------
-if lift_type == "مضخات المكبس (Sucker Rod Pump)":
-    st.header("⚙️ حسابات وتصميم مضخات المكبس (SRP)")
+# --- التبويب الأول: مضخات المكبس ---
+with tab1:
+    st.subheader("حسابات مضخات القضبان الشفاطة (Sucker Rod Pump)")
     
-    col_in1, col_in2 = st.columns(2)
-    
-    with col_in1:
-        depth = st.number_input("عمق البئر (ft):", min_value=1000, max_value=15000, value=5000, step=500)
-        flow_rate = st.number_input("(BPD) معدل الإنتاج المطلوب:", min_value=10, max_value=2000, value=250, step=10)
-        fluid_sg = st.number_input("(Fluid SG) الفيزياء النوعية للسائل:", min_value=0.5, max_value=1.5, value=1.00, step=0.05)
+    col1, col2 = st.columns(2)
+    with col1:
+        depth_srp = st.number_input("عمق البئر (ft):", min_value=1000, max_value=15000, value=5000, step=500, key="d_srp")
+        flow_srp = st.number_input("معدل الإنتاج المطلوب (BPD):", min_value=10, max_value=2000, value=250, step=10, key="f_srp")
+        sg_srp = st.number_input("الكثافة النوعية للسائل (Fluid SG):", min_value=0.5, max_value=1.5, value=1.00, step=0.05, key="sg_srp")
         
-    with col_in2:
-        stroke_length = st.number_input("طول الشوط - Stroke Length (in):", min_value=24, max_value=200, value=86, step=2)
-        spm = st.number_input("عدد الأشواط/دقيقة (Strokes Per Minute - SPM):", min_value=4, max_value=30, value=12, step=1)
+    with col2:
+        stroke = st.number_input("طول الشوط (Stroke Length - in):", min_value=24, max_value=200, value=86, step=2)
+        spm = st.number_input("عدد الأشواط/دقيقة (SPM):", min_value=4, max_value=30, value=12, step=1)
 
-    # حسابات هندسية تقريبية لـ SRP
-    plunger_size = np.sqrt(flow_rate / (0.1166 * stroke_length * spm * 0.8)) if (stroke_length * spm) > 0 else 1.5
-    fluid_weight = 0.433 * fluid_sg * depth * (np.pi * (plunger_size / 2)**2)
-    peak_rod_load = fluid_weight + (depth * 1.6)
-    required_hp = (peak_rod_load * stroke_length * spm) / 375000 + 5
+    # المعادلات
+    plunger_size = np.sqrt(flow_srp / (0.1166 * stroke * spm * 0.8)) if (stroke * spm) > 0 else 1.5
+    fluid_weight = 0.433 * sg_srp * depth_srp * (np.pi * (plunger_size / 2)**2)
+    peak_rod_load = fluid_weight + (depth_srp * 1.6)
+    required_hp = (peak_rod_load * stroke * spm) / 375000 + 5
 
-    st.divider()
-    st.subheader("📊 النتائج والتوصيات الموصى بها")
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
     
-    res_col1, res_col2, res_col3 = st.columns(3)
-    res_col1.metric("قطر المكبس المقترح (Plunger Size)", f"{plunger_size:.2f} in")
-    res_col2.metric("أقصى حمل متوقع (Peak Rod Load)", f"{peak_rod_load:,.0f} lbs")
-    res_col3.metric("القدرة الحصانية للمحرك (Required Motor HP)", f"{required_hp:.1f} HP")
+    with c1:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">قطر المكبس المقترح</div>
+            <div class="metric-value">{plunger_size:.2f} in</div>
+        </div>''', unsafe_allow_html=True)
+        
+    with c2:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">أقصى حمل متوقع (Peak Load)</div>
+            <div class="metric-value">{peak_rod_load:,.0f} lbs</div>
+        </div>''', unsafe_allow_html=True)
+        
+    with c3:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">القدرة الحصانية للمحرك</div>
+            <div class="metric-value">{required_hp:.1f} HP</div>
+        </div>''', unsafe_allow_html=True)
 
-    st.info(f"""
-    **ملخص التصميم:**
-    * عند عمق **{depth} ft** للوصول للإصدار المطلوب **{flow_rate} BPD**.
-    * يُوصى باستخدام مضخة بمكبس قطر **{plunger_size:.2f} in** مع شوط طوله **{stroke_length} in** وتشغيل المضخة بمعدل **{spm} SPM**.
-    """)
-
-# ---------------------------------------------------------
-# الواجهة الثانية: المضخات الغاطسة (ESP)
-# ---------------------------------------------------------
-else:
-    st.header("⚡ حسابات وتصميم المضخات الغاطسة (ESP)")
+# --- التبويب الثاني: المضخات الغاطسة ---
+with tab2:
+    st.subheader("حسابات المضخات الكهربائية الغاطسة (ESP)")
     
-    col_esp1, col_esp2 = st.columns(2)
-    with col_esp1:
-        depth = st.number_input("عمق البئر (ft):", min_value=1000, max_value=20000, value=7000, step=500)
-        flow_rate = st.number_input("(BPD) معدل الإنتاج المطلوب:", min_value=500, max_value=15000, value=3500, step=100)
+    col1, col2 = st.columns(2)
+    with col1:
+        depth_esp = st.number_input("عمق البئر (ft):", min_value=1000, max_value=20000, value=7000, step=500, key="d_esp")
+        flow_esp = st.number_input("معدل الإنتاج المطلوب (BPD):", min_value=500, max_value=15000, value=3500, step=100, key="f_esp")
     
-    with col_esp2:
-        head_per_stage = st.number_input("الرفع لكل مرحلة Head/Stage (ft):", min_value=10, max_value=100, value=25, step=5)
-        p_disp = st.number_input("الضغط المطلوب عند السطح (psi):", min_value=50, max_value=1000, value=200, step=25)
+    with col2:
+        head_stage = st.number_input("الرفع لكل مرحلة Head/Stage (ft):", min_value=10, max_value=100, value=25, step=5)
+        p_surface = st.number_input("الضغط السطحي المطلوب (psi):", min_value=50, max_value=1000, value=200, step=25)
 
-    # حسابات ESP
-    total_head = depth + (p_disp * 2.31)
-    stages = int(total_head / head_per_stage) if head_per_stage > 0 else 100
-    esp_hp = (flow_rate * total_head) / 135000
+    total_head = depth_esp + (p_surface * 2.31)
+    stages = int(total_head / head_stage) if head_stage > 0 else 100
+    esp_hp = (flow_esp * total_head) / 135000
 
-    st.divider()
-    st.subheader("📊 النتائج والتوصيات الموصى بها (ESP)")
+    st.markdown("<br>", unsafe_allow_html=True)
+    ec1, ec2, ec3 = st.columns(3)
     
-    e_col1, e_col2, e_col3 = st.columns(3)
-    e_col1.metric("إجمالي الرفع الهيدروليكي (Total Head)", f"{total_head:,.0f} ft")
-    e_col2.metric("عدد مراحل المضخة (Stages Required)", f"{stages} stage")
-    e_col3.metric("قدرة المحرك المطلوب (Motor HP)", f"{esp_hp:.1f} HP")
+    with ec1:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">إجمالي الرفع (Total Head)</div>
+            <div class="metric-value">{total_head:,.0f} ft</div>
+        </div>''', unsafe_allow_html=True)
+        
+    with ec2:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">عدد مراحل المضخة</div>
+            <div class="metric-value">{stages} stages</div>
+        </div>''', unsafe_allow_html=True)
+        
+    with ec3:
+        st.markdown(f'''<div class="metric-card">
+            <div class="metric-label">قدرة المحرك المطلوبة</div>
+            <div class="metric-value">{esp_hp:.1f} HP</div>
+        </div>''', unsafe_allow_html=True)
 
-st.divider()
+# --- التبويب الثالث: المساعد الذكي ---
+with tab3:
+    st.subheader("🤖 استشارات الهندسة والرفع الصناعي")
+    
+    user_query = st.text_area(
+        "اطرح استفسارك الهندسي هنا:",
+        placeholder="مثال: كيف أتعامل مع انخفاض كفاءة المضخة الحجمية عند وجود غاز حر؟",
+        height=120
+    )
 
-# ---------------------------------------------------------
-# قسم المساعد الهندسي الذكي (Gemini AI)
-# ---------------------------------------------------------
-st.subheader("🤖 المساعد الهندسي الذكي (Gemini AI)")
-
-user_query = st.text_area(
-    "اكتب استفسارك الهندسي هنا (مثال: ما أسباب انخفاض كفاءة المضخة؟ أو كيف أختار قطر المكبس المناسب؟):",
-    height=100
-)
-
-if st.button("تحليل واستشارة الذكاء الاصطناعي 🧠"):
-    if not api_key:
-        st.error("⚠️ يرجى إدخال مفتاح Gemini API في الشريط الجانبي أولاً لتفعيل هذه الميزة!")
-    elif not user_query.strip():
-        st.warning("⚠️ يرجى كتابة سؤالك قبل الضغط على الزر.")
-    else:
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-3.6-flash')
-            
-            prompt = f"""
-            أنت خبير واستشاري في هندسة النفط ومتخصص في أجهزة الرفع الصناعي (Artificial Lift Systems).
-            نوع النظام المختار حالياً: {lift_type}
-            بيانات البئر المدخلة: العمق = {depth} ft، معدل الإنتاج = {flow_rate} BPD.
-            
-            سؤال المستخدم:
-            "{user_query}"
-            
-            قدم إجابة هندسية دقيقة، مختصرة، ومباشرة في نقاط موجهة لمهندس الإنتاج.
-            """
-            
-            with st.spinner("جاري تحليل السؤال وتوليد التوصية الهندسية..."):
-                response = model.generate_content(prompt)
-                st.markdown("### 💡 التوصية الهندسية من المساعد الذكي:")
-                st.write(response.text)
+    if st.button("تحليل واستشارة الذكاء الاصطناعي 🧠", use_container_width=True):
+        if not api_key:
+            st.error("⚠️ يرجى إدخال مفتاح API في القائمة الجانبية أولاً.")
+        elif not user_query.strip():
+            st.warning("⚠️ اكتب سؤالك أولاً.")
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
-        except Exception as e:
-            st.error(f"حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: {e}")
+                with st.spinner("جاري إعداد التوصية الهندسية..."):
+                    response = model.generate_content(user_query)
+                    st.markdown("---")
+                    st.markdown("### 💡 الإجابة الهندسية:")
+                    st.write(response.text)
+            except Exception as e:
+                st.error(f"خطأ في الاتصال: {e}")
