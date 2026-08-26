@@ -1,16 +1,4 @@
 import streamlit as st
-
-# كود إخفاء عناصر التحكم والتذييل
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stApp > header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
-import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
