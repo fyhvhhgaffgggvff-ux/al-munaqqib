@@ -75,7 +75,7 @@ with col2:
 st.divider()
 
 # ---------------------------------------------------------
-# قسم المساعد الهندسي الذكي (Gemini Integration)
+# قسم المساعد الهندسي الذكي (Gemini AI)
 # ---------------------------------------------------------
 st.subheader("🤖 المساعد الهندسي الذكي (Gemini AI)")
 
@@ -86,13 +86,13 @@ user_query = st.text_area(
 
 if st.button("تحليل واستشارة الذكاء الاصطناعي 🧠"):
     if not api_key:
-        st.error("⚠️ يرجى إدخال مفتاح Gemini API في الشريط الجانبي أولاً لتفعيل هذه الميزة!")
+        st.error("⚠️ يرجى إدخل مفتاح Gemini API في الشريط الجانبي أولاً لتفعيل هذه الميزة!")
     elif not user_query.strip():
         st.warning("⚠️ يرجى كتابة سؤالك قبل الضغط على الزر.")
     else:
         try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             prompt = f"""
             أنت خبير واستشاري في هندسة النفط ومتخصص في أجهزة الرفع الصناعي (Artificial Lift Systems).
