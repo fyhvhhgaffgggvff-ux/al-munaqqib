@@ -9,6 +9,7 @@ st.markdown("""
     .stApp > header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -179,4 +180,3 @@ else:
         yaxis_title="إجمالي الرفع - Head (ft)"
     )
     st.plotly_chart(fig_esp, use_container_width=True)
-   
