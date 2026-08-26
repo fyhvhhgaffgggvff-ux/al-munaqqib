@@ -200,7 +200,7 @@ with tabs[5]:
         else:
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-3.6-flash')
                 with st.spinner("جاري تحليل السؤال وإعداد التوصية الهندسية..."):
                     res = model.generate_content(f"أنت استشاري هندسة نفط وركّز على الإجابة بشكل علمي ومباشر: {q_ai}")
                     st.markdown("### 💡 التوصية الهندسية:")
