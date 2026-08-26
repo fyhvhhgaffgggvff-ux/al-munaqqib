@@ -3,3 +3,10 @@ matplotlib
 numpy
 pandas
 google-generativeai
+streamlit
+numpy
+pandas
+matplotlib
+lasio
+openpyxl
+google-generativeai
