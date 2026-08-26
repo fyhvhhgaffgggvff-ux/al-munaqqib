@@ -1,8 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
 # -------------------------------------------------------------
 # إعدادات الصفحة والواجهة
@@ -14,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("⚓ وحدة تصميم أجهزة الرفع الصناعي (Artificial Lift Sizing)")
-st.caption("برنامج المُنقّب الهندي - حساب وتحديد مقاسات مضخات المكبس (SRP) والمضخات الغاطسة (ESP) مع التجسيم البياني")
+st.caption("برنامج المُنقّب - حساب وتحديد مقاسات مضخات المكبس (SRP) والمضخات الغاطسة (ESP) مع التجسيم البياني")
 
 # -------------------------------------------------------------
 # الشريط الجانبي (Sidebar)
@@ -81,19 +79,13 @@ if "Sucker Rod Pump" in pump_type:
             mime="text/csv"
         )
 
-    # رسم بياني تفاعلي
+    # رسم بياني تفاعلي مدمج
     st.markdown("---")
-    st.subheader("📈 تحليلات تفاعلية: تغير القدرة الحصانية مع عمق البئر")
-    depths = np.linspace(1000, 12000, 50)
+    st.subheader("📈 العلاقة بين عمق البئر والقدرة الحصانية المطلوبة (HP)")
+    depths = np.linspace(1000, 12000, 30)
     hps = [(target_prod * d * fluid_sg) / (135700 * 0.55) for d in depths]
-    
-    fig = px.line(
-        x=depths, y=hps,
-        labels={"x": "عمق البئر (ft)", "y": "القدرة الحصانية المطلوبة (HP)"},
-        title="تأثير العمق على استهلاك القدرة للمحرك"
-    )
-    fig.add_scatter(x=[depth], y=[motor_hp], mode='markers', marker=dict(size=12, color='red'), name='البئر الحالي')
-    st.plotly_chart(fig, use_container_width=True)
+    chart_data = pd.DataFrame({"العمق (ft)": depths, "القدرة (HP)": hps}).set_index("العمق (ft)")
+    st.line_chart(chart_data)
 
 # -------------------------------------------------------------
 # 2. تصميم المضخات الغاطسة الكهربائية (ESP)
@@ -151,20 +143,10 @@ else:
             mime="text/csv"
         )
 
-    # رسم منحنى الأداء الإفتراضي للمضخة (Pump Head vs Capacity)
+    # رسم منحنى الأداء التقديري للمضخة
     st.markdown("---")
-    st.subheader("📈 منحنى أداء المضخة ونقطة التشغيل (H-Q Curve)")
-    
-    q_range = np.linspace(100, esp_q * 1.6, 50)
-    # منحنى أداء فرضي للمضخة (حيث يقل الـ Head مع زيادة التدفق Q)
+    st.subheader("📈 منحنى أداء المضخة (Head vs Flow Rate)")
+    q_range = np.linspace(100, esp_q * 1.5, 30)
     head_curve = tdh * 1.3 - (0.3 * tdh * (q_range / esp_q)**2)
-    
-    fig_esp = go.Figure()
-    fig_esp.add_trace(go.Scatter(x=q_range, y=head_curve, mode='lines', name='منحنى أداء المضخة (Head Curve)'))
-    fig_esp.add_trace(go.Scatter(x=[esp_q], y=[tdh], mode='markers', marker=dict(size=14, color='green'), name='نقطة التشغيل المستهدفة'))
-    fig_esp.update_layout(
-        title="منحنى الأداء التقديري لمضخة ESP",
-        xaxis_title="معدل التدفق (BPD)",
-        yaxis_title="إجمالي الرفع - Head (ft)"
-    )
-    st.plotly_chart(fig_esp, use_container_width=True)
+    esp_chart_data = pd.DataFrame({"معدل التدفق (BPD)": q_range, "ارتفاع الرفع - Head (ft)": head_curve}).set_index("معدل التدفق (BPD)")
+    st.line_chart(esp_chart_data)
