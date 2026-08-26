@@ -1,20 +1,19 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import google.generativeai as genai
 
 # ---------------------------------------------------------
 # إعدادات الصفحة والواجهة
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="برنامج المُنقّب - الرفع الصناعي والذكاء الاصطناعي",
+    page_title="برنامج المُنقّب - تصميم أجهزة الرفع الصناعي",
     page_icon="⚓",
     layout="wide"
 )
 
-st.title("⚓ برنامج المُنقّب - للتحليل الهندسي والذكاء الاصطناعي")
-st.caption("منصة متكاملة لتصميم أجهزة الرفع الصناعي، التحليل البياني، والاستشارات الذكية")
+st.title("⚓ برنامج المُنقّب - المساعد الهندسي الذكي")
+st.caption("برنامج حساب وتصميم أجهزة الرفع الصناعي والذكاء الاصطناعي")
 
 # ---------------------------------------------------------
 # الشريط الجانبي (Sidebar)
@@ -22,93 +21,76 @@ st.caption("منصة متكاملة لتصميم أجهزة الرفع الصن�
 st.sidebar.header("🔑 إعدادات الذكاء الاصطناعي")
 api_key = st.sidebar.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
 
-st.sidebar.header("⚙️ مدخلات بيانات البئر")
-flow_rate = st.sidebar.number_input("معدل الإنتاج المطلوب (BPD)", min_value=100, max_value=10000, value=1500, step=100)
-depth = st.sidebar.number_input("عمق البئر (ft)", min_value=1000, max_value=20000, value=6000, step=500)
-gor = st.sidebar.number_input("نسبة الغاز للنفط GOR (scf/STB)", min_value=0, max_value=5000, value=300, step=50)
-bsw = st.sidebar.slider("نسبة القطع المائي BS&W (%)", 0, 100, 20)
-viscosity = st.sidebar.number_input("اللزوجة (cP)", min_value=0.5, max_value=500.0, value=5.0, step=0.5)
+st.sidebar.header("⚙️ خيارات النظام")
+lift_type = st.sidebar.selectbox(
+    "اختر نوع نظام الرفع الصناعي:",
+    ["مضخات المكبس (Sucker Rod Pump)", "(ESP) المضخات الغاطسة الكهربائية"]
+)
 
 # ---------------------------------------------------------
-# منطق ترشيح نظام الرفع الصناعي
+# الواجهة الأولى: مضخات المكبس (Sucker Rod Pump)
 # ---------------------------------------------------------
-def recommend_lift_system(rate, d, g, water_cut, visc):
-    reasons = []
-    if rate > 3000 and g < 1000 and visc < 20:
-        system = "ESP (المضخة الكهربائية الغاطسة)"
-        reasons.append("معدل إنتاج عالٍ جداً ولزوجة منخفضة يناسبها نظام ESP.")
-    elif rate < 1000 and d < 9000 and g < 500:
-        system = "SRP (مضخة القضبان الشفاطة)"
-        reasons.append("معدل إنتاج متوسط/منخفض وعمق مناسب لنظام SRP.")
-    elif g > 800:
-        system = "Gas Lift (الرفع بالغاز)"
-        reasons.append("نسبة غاز عالية (GOR) تجعل الرفع بالغاز الخيار الأمثل.")
-    elif visc > 50:
-        system = "PCP (المضخة اللولبية التقدمية)"
-        reasons.append("اللزوجة العالية للمائع تمنح الأفضلية لنظام PCP.")
-    else:
-        system = "ESP (المضخة الكهربائية الغاطسة)"
-        reasons.append("تم اختيار ESP بناءً على متطلبات الإنتاج العامة.")
-    return system, reasons
-
-recommended_system, system_reasons = recommend_lift_system(flow_rate, depth, gor, bsw, viscosity)
-
-# ---------------------------------------------------------
-# عرض نتائج التوصية الأولية
-# ---------------------------------------------------------
-st.subheader("🎯 التوصية الأولية لنظام الرفع المناسب")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.success(f"النظام المقترح: **{recommended_system}**")
-    for r in system_reasons:
-        st.write(f"- {r}")
-
-with col2:
-    st.info("📊 ملخص بيانات البئر المدخلة:")
-    st.write(f"- العمق: {depth} ft")
-    st.write(f"- معدل التدفق: {flow_rate} BPD")
-    st.write(f"- نسبة القطع المائي: {bsw}%")
-    st.write(f"- نسبة الغاز للنفط: {gor} scf/STB")
-
-st.divider()
-
-# ---------------------------------------------------------
-# التحليل البياني وتخفيض الضغط (IPR Curve & Depth Profile)
-# ---------------------------------------------------------
-st.subheader("📈 التحليل البياني والأداء المكمني (IPR Chart)")
-
-col_chart1, col_chart2 = st.columns(2)
-
-with col_chart1:
-    # رسم منحنى أداء التدفق الداخل (IPR Curve)
-    p_res = 3000 # ضغط المكمن افتراضي
-    pwf = np.linspace(0, p_res, 50)
-    q_max = flow_rate * 1.5
-    q = q_max * (1 - 0.2 * (pwf / p_res) - 0.8 * ((pwf / p_res) ** 2))
+if lift_type == "مضخات المكبس (Sucker Rod Pump)":
+    st.header("⚙️ حسابات وتصميم مضخات المكبس (SRP)")
     
-    fig, ax = plt.subplots()
-    ax.plot(q, pwf, color='green', linewidth=2, label='منحنى IPR')
-    ax.axhline(y=1500, color='r', linestyle='--', label='مستوى ضغط التشغيل')
-    ax.set_xlabel('معدل الإنتاج Q (BPD)')
-    ax.set_ylabel('ضغط قاع البئر Pwf (psi)')
-    ax.set_title('منحنى أداء الإنتاجية (IPR Curve)')
-    ax.grid(True)
-    ax.legend()
-    st.pyplot(fig)
+    col_in1, col_in2 = st.columns(2)
+    
+    with col_in1:
+        depth = st.number_input("عمق البئر (ft):", min_value=1000, max_value=15000, value=5000, step=500)
+        flow_rate = st.number_input("(BPD) معدل الإنتاج المطلوب:", min_value=10, max_value=2000, value=250, step=10)
+        fluid_sg = st.number_input("(Fluid SG) الفيزياء النوعية للسائل:", min_value=0.5, max_value=1.5, value=1.00, step=0.05)
+        
+    with col_in2:
+        stroke_length = st.number_input("طول الشوط - Stroke Length (in):", min_value=24, max_value=200, value=86, step=2)
+        spm = st.number_input("عدد الأشواط/دقيقة (Strokes Per Minute - SPM):", min_value=4, max_value=30, value=12, step=1)
 
-with col_chart2:
-    # جدول مقارنة الأنظمة الهندسية
-    st.write("📋 **جدول مقارنة أداء أنظمة الرفع:**")
-    comparison_data = {
-        "النظام": ["ESP", "SRP", "Gas Lift", "PCP"],
-        "أقصى عمق (ft)": [15000, 10000, 15000, 8000],
-        "أقصى معدل (BPD)": [30000, 1000, 20000, 4000],
-        "تحمل الغاز": ["متوسط", "ضعيف", "ممتاز", "ضعيف"],
-        "تحمل اللزوجة": ["ضعيف", "متوسط", "ضعيف", "ممتاز"]
-    }
-    df_comp = pd.DataFrame(comparison_data)
-    st.dataframe(df_comp, use_container_width=True)
+    # حسابات هندسية تقريبية لـ SRP
+    plunger_size = np.sqrt(flow_rate / (0.1166 * stroke_length * spm * 0.8)) if (stroke_length * spm) > 0 else 1.5
+    fluid_weight = 0.433 * fluid_sg * depth * (np.pi * (plunger_size / 2)**2)
+    peak_rod_load = fluid_weight + (depth * 1.6)
+    required_hp = (peak_rod_load * stroke_length * spm) / 375000 + 5
+
+    st.divider()
+    st.subheader("📊 النتائج والتوصيات الموصى بها")
+    
+    res_col1, res_col2, res_col3 = st.columns(3)
+    res_col1.metric("قطر المكبس المقترح (Plunger Size)", f"{plunger_size:.2f} in")
+    res_col2.metric("أقصى حمل متوقع (Peak Rod Load)", f"{peak_rod_load:,.0f} lbs")
+    res_col3.metric("القدرة الحصانية للمحرك (Required Motor HP)", f"{required_hp:.1f} HP")
+
+    st.info(f"""
+    **ملخص التصميم:**
+    * عند عمق **{depth} ft** للوصول للإصدار المطلوب **{flow_rate} BPD**.
+    * يُوصى باستخدام مضخة بمكبس قطر **{plunger_size:.2f} in** مع شوط طوله **{stroke_length} in** وتشغيل المضخة بمعدل **{spm} SPM**.
+    """)
+
+# ---------------------------------------------------------
+# الواجهة الثانية: المضخات الغاطسة (ESP)
+# ---------------------------------------------------------
+else:
+    st.header("⚡ حسابات وتصميم المضخات الغاطسة (ESP)")
+    
+    col_esp1, col_esp2 = st.columns(2)
+    with col_esp1:
+        depth = st.number_input("عمق البئر (ft):", min_value=1000, max_value=20000, value=7000, step=500)
+        flow_rate = st.number_input("(BPD) معدل الإنتاج المطلوب:", min_value=500, max_value=15000, value=3500, step=100)
+    
+    with col_esp2:
+        head_per_stage = st.number_input("الرفع لكل مرحلة Head/Stage (ft):", min_value=10, max_value=100, value=25, step=5)
+        p_disp = st.number_input("الضغط المطلوب عند السطح (psi):", min_value=50, max_value=1000, value=200, step=25)
+
+    # حسابات ESP
+    total_head = depth + (p_disp * 2.31)
+    stages = int(total_head / head_per_stage) if head_per_stage > 0 else 100
+    esp_hp = (flow_rate * total_head) / 135000
+
+    st.divider()
+    st.subheader("📊 النتائج والتوصيات الموصى بها (ESP)")
+    
+    e_col1, e_col2, e_col3 = st.columns(3)
+    e_col1.metric("إجمالي الرفع الهيدروليكي (Total Head)", f"{total_head:,.0f} ft")
+    e_col2.metric("عدد مراحل المضخة (Stages Required)", f"{stages} stage")
+    e_col3.metric("قدرة المحرك المطلوب (Motor HP)", f"{esp_hp:.1f} HP")
 
 st.divider()
 
@@ -118,7 +100,7 @@ st.divider()
 st.subheader("🤖 المساعد الهندسي الذكي (Gemini AI)")
 
 user_query = st.text_area(
-    "اكتب استفسارك الهندسي هنا (مثال: متى أختار SRP بدلاً من ESP؟ أو ما أسباب انخفاض كفاءة المضخة؟):",
+    "اكتب استفسارك الهندسي هنا (مثال: ما أسباب انخفاض كفاءة المضخة؟ أو كيف أختار قطر المكبس المناسب؟):",
     height=100
 )
 
@@ -134,13 +116,8 @@ if st.button("تحليل واستشارة الذكاء الاصطناعي 🧠")
             
             prompt = f"""
             أنت خبير واستشاري في هندسة النفط ومتخصص في أجهزة الرفع الصناعي (Artificial Lift Systems).
-            بناءً على بيانات البئر التالية:
-            - العمق: {depth} ft
-            - معدل التدفق: {flow_rate} BPD
-            - GOR: {gor} scf/STB
-            - BS&W: {bsw}%
-            - اللزوجة: {viscosity} cP
-            - النظام المقترح أولياً: {recommended_system}
+            نوع النظام المختار حالياً: {lift_type}
+            بيانات البئر المدخلة: العمق = {depth} ft، معدل الإنتاج = {flow_rate} BPD.
             
             سؤال المستخدم:
             "{user_query}"
