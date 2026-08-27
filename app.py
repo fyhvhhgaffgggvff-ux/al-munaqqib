@@ -207,7 +207,7 @@ with tabs[5]:
         elif q_ai.strip():
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-3.6-flash')
                 with st.spinner("جاري التحليل..." if lang == "العربية" else "Analyzing..."):
                     lang_prompt = "أجب باللغة العربية." if lang == "العربية" else "Answer in English."
                     res = model.generate_content(f"{lang_prompt} {q_ai}")
