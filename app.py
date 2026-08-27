@@ -6,13 +6,13 @@ import lasio
 import google.generativeai as genai
 
 # ---------------------------------------------------------
-# إعدادات الصفحة الأولية
+# إعدادات الصفحة
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="Al-Munaqqib Platform",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ---------------------------------------------------------
@@ -25,13 +25,12 @@ with st.sidebar:
     st.divider()
 
 # ---------------------------------------------------------
-# قاموس اللغات (Dictionary)
+# قاموس اللغات
 # ---------------------------------------------------------
 T = {
     "العربية": {
-        "dir": "rtl",
         "title": "⚡ منصة المُنقّب الهندسية",
-        "subtitle": "نظام شامل لتصميم أجهزة الرفع الصناعي، تحليل المكامن، واستشارات AI",
+        "subtitle": "نظام شامل لتصميم أجهزة الرفع الصناعي، تحليل المكامن، واستشارات الذكاء الاصطناعي",
         "tabs": ["🎯 الترشيح الذكي", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل الملفات", "🤖 المساعد الذكي"],
         "screening_title": "🎯 نظام الاختيار والترشيح الآلي",
         "target_prod": "الإنتاج المستهدف (BPD):",
@@ -62,7 +61,6 @@ T = {
         "ai_res": "💡 التوصية الهندسية:"
     },
     "English": {
-        "dir": "ltr",
         "title": "⚡ Al-Munaqqib Engineering Platform",
         "subtitle": "Comprehensive system for artificial lift design, reservoir analysis, and AI consultation",
         "tabs": ["🎯 Smart Screening", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 File Analysis", "🤖 AI Assistant"],
@@ -99,21 +97,6 @@ T = {
 t = T[lang]
 
 # ---------------------------------------------------------
-# ضبط الاتجاه والتنسيق بحسب اللغة المختارة
-# ---------------------------------------------------------
-st.markdown(f"""
-    <style>
-    html, body, [class*="css"] {{
-        direction: {t["dir"]};
-        text-align: {"right" if t["dir"] == "rtl" else "left"};
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }}
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    </style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
 # الواجهة الرئيسية
 # ---------------------------------------------------------
 st.title(t["title"])
@@ -134,11 +117,11 @@ with tabs[0]:
         
     if st.button(t["btn_screen"], use_container_width=True):
         if q_target > 3000 and gor < 1000:
-            st.success("RECOMMENDED: **ESP (Electric Submersible Pump)**")
+            st.success("الخيار الموصى به: **ESP (Electric Submersible Pump)**" if lang == "العربية" else "RECOMMENDED: **ESP (Electric Submersible Pump)**")
         elif gor > 800:
-            st.success("RECOMMENDED: **Gas Lift System**")
+            st.success("الخيار الموصى به: **Gas Lift System**" if lang == "العربية" else "RECOMMENDED: **Gas Lift System**")
         else:
-            st.success("RECOMMENDED: **SRP (Sucker Rod Pump)**")
+            st.success("الخيار الموصى به: **SRP (Sucker Rod Pump)**" if lang == "العربية" else "RECOMMENDED: **SRP (Sucker Rod Pump)**")
 
 # 2. تصميم SRP
 with tabs[1]:
@@ -208,7 +191,7 @@ with tabs[3]:
 
 # 5. تحليل الملفات
 with tabs[4]:
-    st.subheader("📁 File & Log Analysis")
+    st.subheader("📁 " + ("تحليل الملفات والسجلات" if lang == "العربية" else "File & Log Analysis"))
     up_file = st.file_uploader("Upload Excel / CSV / LAS", type=["xlsx", "csv", "las"])
     if up_file:
         st.success(f"File uploaded: {up_file.name}")
@@ -220,13 +203,13 @@ with tabs[5]:
     
     if st.button(t["btn_ai"], use_container_width=True):
         if not api_key:
-            st.error("⚠️ Please provide Gemini API Key in the sidebar.")
+            st.error("⚠️ يرجى أدخال مفتاح Gemini API في القائمة الجانبية أولاً." if lang == "العربية" else "⚠️ Please provide Gemini API Key in the sidebar.")
         elif q_ai.strip():
             try:
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel('gemini-2.5-flash')
-                with st.spinner("Analyzing..."):
-                    lang_prompt = "Answer in English." if lang == "English" else "أجب باللغة العربية."
+                with st.spinner("جاري التحليل..." if lang == "العربية" else "Analyzing..."):
+                    lang_prompt = "أجب باللغة العربية." if lang == "العربية" else "Answer in English."
                     res = model.generate_content(f"{lang_prompt} {q_ai}")
                     st.markdown(f"### {t['ai_res']}")
                     st.write(res.text)
