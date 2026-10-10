@@ -24,7 +24,7 @@ with st.sidebar:
     lang = st.selectbox("🌐 اختر اللغة / Select Language", ["العربية", "English"])
     api_key = st.text_input("Gemini API Key:", type="password")
     st.divider()
-    st.info("💡 **منصة المُنقّب الهندسية v5.0**\nالمنصة الحقلية المتكاملة لتصميم الرفع الصناعي، تحليل الملفات، والاقتصاديات.")
+    st.info("💡 **منصة المُنقّب الهندسية v5.1**\nالمنصة الحقلية المتكاملة لتصميم الرفع الصناعي، تحليل الملفات، والاقتصاديات.")
 
 # ---------------------------------------------------------
 # قاموس اللغات والترجمة
@@ -112,7 +112,6 @@ st.caption(t["subtitle"])
 
 tabs = st.tabs(t["tabs"])
 
-# متغيرات لحفظ التقرير
 report_data = {}
 
 # 1. الترشيح الذكي والتقييم الاقتصادي
@@ -131,26 +130,26 @@ with tabs[0]:
     
     if st.button(t["btn_screen"], use_container_width=True):
         if visc > 300:
-            recommended_system = "PCP (Progressive Cavity Pump) - ملائم جداً للزوجة الثقيلة"
+            recommended_system = "PCP (Progressive Cavity Pump)"
             capex_est, opex_est = 65000, 120
         elif gor > 1500 and depth_ft > 10000:
-            recommended_system = "Gas Lift System - الأنسب للغاز العالي والأعماق الكبيرة"
+            recommended_system = "Gas Lift System"
             capex_est, opex_est = 90000, 150
         elif q_target > 3500:
-            recommended_system = "ESP (Electric Submersible Pump) - الأفضل لمعدلات الإنتاج العالية"
+            recommended_system = "ESP (Electric Submersible Pump)"
             capex_est, opex_est = 120000, 250
         else:
-            recommended_system = "SRP (Sucker Rod Pump) - الخيار الاقتصادي الأمثل للأعماق المتوسطة"
+            recommended_system = "SRP (Sucker Rod Pump)"
             capex_est, opex_est = 45000, 80
 
-        st.success(f"📌 **التوصية الهندسية:** {recommended_system}")
+        st.success(f"📌 **التوصية الهندسية / Recommendation:** {recommended_system}")
         
         st.markdown("### 💰 التقييم الاقتصادي المبدئي (Economics Estimation)")
         ec1, ec2 = st.columns(2)
-        ec1.metric("CAPEX (التكلفة الأولية التقديرية)", f"${capex_est:,.0f}")
-        ec2.metric("OPEX (تكلفة التشغيل اليومية)", f"${opex_est:,.0f} / day")
+        ec1.metric("CAPEX", f"${capex_est:,.0f}")
+        ec2.metric("OPEX", f"${opex_est:,.0f} / day")
         
-        report_data['screening'] = f"Target Production: {q_target} BPD, Depth: {depth_ft} ft, GOR: {gor}, Viscosity: {visc} cP \n-> Recommended System: {recommended_system} \n-> CAPEX: ${capex_est:,.0f}, OPEX: ${opex_est}/day"
+        report_data['screening'] = f"Target Production: {q_target} BPD | Depth: {depth_ft} ft | GOR: {gor} | Viscosity: {visc} cP \n-> Recommended System: {recommended_system} \n-> CAPEX: ${capex_est:,.0f} | OPEX: ${opex_est}/day"
 
 # 2. تصميم SRP
 with tabs[1]:
@@ -173,7 +172,7 @@ with tabs[1]:
     m2.metric(t["peak_load"], f"{peak_l:,.0f} lbs")
     m3.metric(t["motor_hp"], f"{hp_req:.1f} HP")
     
-    report_data['srp'] = f"SRP Design -> Depth: {d_srp} ft, Plunger Size: {p_size:.2f} in, Peak Load: {peak_l:,.0f} lbs, Motor HP: {hp_req:.1f} HP"
+    report_data['srp'] = f"SRP Design -> Depth: {d_srp} ft | Plunger Size: {p_size:.2f} in | Peak Load: {peak_l:,.0f} lbs | Motor HP: {hp_req:.1f} HP"
 
 # 3. تصميم ESP
 with tabs[2]:
@@ -196,7 +195,7 @@ with tabs[2]:
     e2.metric(t["stages"], f"{stages}")
     e3.metric(t["motor_hp"], f"{esp_hp:.1f} HP")
     
-    report_data['esp'] = f"ESP Design -> Depth: {d_esp} ft, TDH: {tdh:,.0f} ft, Stages: {stages}, Motor HP: {esp_hp:.1f} HP"
+    report_data['esp'] = f"ESP Design -> Depth: {d_esp} ft | TDH: {tdh:,.0f} ft | Stages: {stages} | Motor HP: {esp_hp:.1f} HP"
 
 # 4. منحنى IPR
 with tabs[3]:
@@ -222,41 +221,35 @@ with tabs[3]:
     st.pyplot(fig)
     st.info(f"{t['aof']} **{q_max:,.0f} BPD**")
     
-    report_data['ipr'] = f"IPR Analysis -> Reservoir Pressure: {p_res} psi, Test Rate: {q_test} BPD, AOF: {q_max:,.0f} BPD"
+    report_data['ipr'] = f"IPR Analysis -> Reservoir Pressure: {p_res} psi | Test Rate: {q_test} BPD | AOF: {q_max:,.0f} BPD"
 
-# 5. تحليل السجلات والملفات (مفعل وقارئ حقيقي)
+# 5. تحليل السجلات والملفات
 with tabs[4]:
     st.subheader(t["file_title"])
     uploaded_file = st.file_uploader("Upload LAS, CSV, or Excel File", type=["las", "csv", "xlsx", "xls"])
     
     if uploaded_file is not None:
         file_name = uploaded_file.name
-        st.success(f"✅ تم رفع الملف بنجاح: {file_name}")
-        
+        st.success(f"✅ File uploaded successfully: {file_name}")
         try:
             if file_name.endswith('.csv'):
                 df = pd.read_csv(uploaded_file)
-                st.write("📊 **معاينة بيانات الملف (CSV):**")
                 st.dataframe(df.head(10))
-                report_data['file'] = f"Analyzed File: {file_name}, Rows: {len(df)}, Columns: {len(df.columns)}"
-                
+                report_data['file'] = f"Analyzed File: {file_name} | Rows: {len(df)} | Columns: {len(df.columns)}"
             elif file_name.endswith(('.xlsx', '.xls')):
                 df = pd.read_excel(uploaded_file)
-                st.write("📊 **معاينة بيانات الملف (Excel):**")
                 st.dataframe(df.head(10))
-                report_data['file'] = f"Analyzed File: {file_name}, Rows: {len(df)}, Columns: {len(df.columns)}"
-                
+                report_data['file'] = f"Analyzed File: {file_name} | Rows: {len(df)} | Columns: {len(df.columns)}"
             elif file_name.endswith('.las'):
                 bytes_data = uploaded_file.read()
                 las_string = bytes_data.decode('utf-8', errors='ignore')
                 las = lasio.read(io.StringIO(las_string))
-                st.info(f"WELL NAME: {las.well.WELL.value} | START: {las.well.STRT.value} | STOP: {las.well.STOP.value}")
+                st.info(f"WELL NAME: {las.well.WELL.value}")
                 df_las = las.df().reset_index()
-                st.write("📊 **سجلات البئر المستخرجة (LAS Curves):**")
                 st.dataframe(df_las.head(10))
-                report_data['file'] = f"Analyzed LAS File: {file_name}, Well: {las.well.WELL.value}"
+                report_data['file'] = f"Analyzed LAS File: {file_name} | Well: {las.well.WELL.value}"
         except Exception as e:
-            st.error(f"خطأ في قراءة الملف: {e}")
+            st.error(f"Error: {e}")
 
 # 6. المساعد الذكي Gemini
 with tabs[5]:
@@ -265,14 +258,13 @@ with tabs[5]:
     
     if st.button(t["btn_ai"], use_container_width=True):
         if not api_key:
-            st.error("⚠️ يرجى أدخال مفتاح Gemini API في القائمة الجانبية أولاً." if lang == "العربية" else "⚠️ Please provide Gemini API Key in the sidebar.")
+            st.error("⚠️ Please provide Gemini API Key in the sidebar.")
         elif q_ai.strip():
             try:
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel('gemini-1.5-flash')
-                with st.spinner("جاري التحليل الهندسي..." if lang == "العربية" else "Analyzing..."):
-                    lang_prompt = "أجب باللغة العربية كخبير هندسة إنتاج بترول." if lang == "العربية" else "Answer in English as a petroleum production expert."
-                    res = model.generate_content(f"{lang_prompt} {q_ai}")
+                with st.spinner("Analyzing..."):
+                    res = model.generate_content(f"Answer professionally as a petroleum production expert. {q_ai}")
                     st.markdown(f"### {t['ai_res']}")
                     st.write(res.text)
                     report_data['ai'] = f"AI Query: {q_ai} \n Answer: {res.text}"
@@ -280,7 +272,7 @@ with tabs[5]:
                 st.error(f"Error: {e}")
 
 # ---------------------------------------------------------
-# قسم تصدير التقرير الهندسي والاقتصادي الشامل
+# قسم تصدير التقرير الهندسي والاقتصادي الشامل (بترميز نظيف)
 # ---------------------------------------------------------
 st.divider()
 st.subheader(t["report_title"])
@@ -288,7 +280,7 @@ st.subheader(t["report_title"])
 report_content = f"""
 ==================================================
         AL-MUNAIQQIB ENGINEERING PLATFORM REPORT
-        منصة المُنقّب الهندسية - التقرير الميداني الشامل
+          منصة المُنقّب الهندسية - التقرير الشامل
 ==================================================
 
 1. SMART SCREENING & ECONOMIC EVALUATION:
@@ -314,10 +306,13 @@ Generated by Al-Munaqqib Suite | Petroleum Engineering
 ==================================================
 """
 
+# ترميز مدعوم بالكامل للغة العربية والإنجليزية بدون أي تداخل أو رموز غريبة
+report_bytes = report_content.encode('utf-8-sig')
+
 st.download_button(
     label=t["btn_download"],
-    data=report_content,
-    file_name="Al_Munaqqib_Comprehensive_Field_Report.txt",
-    mime="text/plain",
+    data=report_bytes,
+    file_name="Al_Munaqqib_Comprehensive_Report.txt",
+    mime="text/plain;charset=utf-8",
     use_container_width=True
 )
