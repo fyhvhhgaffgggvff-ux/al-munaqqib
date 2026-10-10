@@ -23,21 +23,22 @@ with st.sidebar:
     lang = st.selectbox("🌐 اختر اللغة / Select Language", ["العربية", "English"])
     api_key = st.text_input("Gemini API Key:", type="password")
     st.divider()
+    st.info("💡 **منصة المُنقّب الهندسية v4.0**\nنظام احترافي لتصميم الرفع الصناعي، تحليل المكامن، والتقييم الاقتصادي.")
 
 # ---------------------------------------------------------
-# قاموس اللغات
+# قاموس اللغات والترجمة
 # ---------------------------------------------------------
 T = {
     "العربية": {
-        "title": "⚡ منصة المُنقّب الهندسية",
-        "subtitle": "نظام شامل لتصميم أجهزة الرفع الصناعي، تحليل المكامن، واستشارات الذكاء الاصطناعي",
-        "tabs": ["🎯 الترشيح الذكي", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل الملفات", "🤖 المساعد الذكي"],
-        "screening_title": "🎯 نظام الاختيار والترشيح الآلي",
+        "title": "⚡ منصة المُنقّب الهندسية المتكاملة",
+        "subtitle": "نظام هندسي متقدم لترشيح وتصميم أجهزة الرفع، تحليل المكامن، التقييم الاقتصادي، واستشارات الذكاء الاصطناعي",
+        "tabs": ["🎯 الترشيح الذكي والـ CAPEX", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل الملفات", "🤖 المساعد الذكي"],
+        "screening_title": "🎯 نظام الاختيار والترشيح الآلي المعياري (Smart Selector)",
         "target_prod": "الإنتاج المستهدف (BPD):",
         "depth": "العمق العمودي (ft):",
-        "gor": "نسبة الغاز للنفط GOR:",
+        "gor": "نسبة الغاز للنفط GOR (scf/stb):",
         "visc": "اللزوجة (cP):",
-        "btn_screen": "ترشيح النظام المناسب 🔍",
+        "btn_screen": "ترشيح النظام الأمثل وحساب التكاليف 🔍",
         "srp_title": "⚙️ تصميم مضخات المكبس (Sucker Rod Pump)",
         "pump_depth": "عمق المضخة (ft):",
         "stroke_len": "طول الشوط (in):",
@@ -56,20 +57,22 @@ T = {
         "q_test": "معدل تدفق الاختبار (BPD):",
         "aof": "القدرة الإنتاجية القصوى للمكمن (AOF):",
         "ai_title": "🤖 استشارات الذكاء الاصطناعي الهندسية",
-        "ai_prompt": "اطرح سؤالك الهندسي هنا:",
+        "ai_prompt": "اطرح سؤالك الهندسي أو استفسارك هنا:",
         "btn_ai": "تحليل الأداء بواسطة Gemini 🧠",
-        "ai_res": "💡 التوصية الهندسية:"
+        "ai_res": "💡 التوصية الهندسية:",
+        "report_title": "📄 تصدير التقرير الهندسي والاقتصادي",
+        "btn_download": "تنزيل التقرير الهندسي الشامل (TXT) 📥"
     },
     "English": {
-        "title": "⚡ Al-Munaqqib Engineering Platform",
-        "subtitle": "Comprehensive system for artificial lift design, reservoir analysis, and AI consultation",
-        "tabs": ["🎯 Smart Screening", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 File Analysis", "🤖 AI Assistant"],
-        "screening_title": "🎯 Automated System Screening & Selection",
+        "title": "⚡ Al-Munaqqib Engineering Suite",
+        "subtitle": "Advanced engineering system for artificial lift selection, reservoir analysis, economics, and AI",
+        "tabs": ["🎯 Smart Screening & CAPEX", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 File Analysis", "🤖 AI Assistant"],
+        "screening_title": "🎯 Advanced Automated System Screening & Selection",
         "target_prod": "Target Production (BPD):",
         "depth": "Vertical Depth (ft):",
-        "gor": "Gas-Oil Ratio GOR:",
+        "gor": "Gas-Oil Ratio GOR (scf/stb):",
         "visc": "Viscosity (cP):",
-        "btn_screen": "Screen Suitable System 🔍",
+        "btn_screen": "Screen Optimal System & Economics 🔍",
         "srp_title": "⚙️ Sucker Rod Pump (SRP) Design",
         "pump_depth": "Pump Depth (ft):",
         "stroke_len": "Stroke Length (in):",
@@ -90,7 +93,9 @@ T = {
         "ai_title": "🤖 AI Engineering Consultation",
         "ai_prompt": "Enter your engineering query here:",
         "btn_ai": "Analyze via Gemini 🧠",
-        "ai_res": "💡 Engineering Recommendation:"
+        "ai_res": "💡 Engineering Recommendation:",
+        "report_title": "📄 Export Engineering & Economic Report",
+        "btn_download": "Download Comprehensive Engineering Report (TXT) 📥"
     }
 }
 
@@ -104,24 +109,48 @@ st.caption(t["subtitle"])
 
 tabs = st.tabs(t["tabs"])
 
-# 1. الترشيح الذكي
+# متغيرات عامة لحفظ التقرير
+report_data = {}
+
+# 1. الترشيح الذكي وتقييم التكاليف الاقتصادية (CAPEX / OPEX)
 with tabs[0]:
     st.subheader(t["screening_title"])
     c1, c2 = st.columns(2)
     with c1:
-        q_target = st.number_input(t["target_prod"], value=2000, step=100)
-        depth_ft = st.number_input(t["depth"], value=6500, step=500)
+        q_target = st.number_input(t["target_prod"], value=2500, step=100)
+        depth_ft = st.number_input(t["depth"], value=7000, step=500)
     with c2:
-        gor = st.number_input(t["gor"], value=400, step=50)
-        visc = st.number_input(t["visc"], value=10.0, step=1.0)
+        gor = st.number_input(t["gor"], value=500, step=50)
+        visc = st.number_input(t["visc"], value=15.0, step=1.0)
         
+    recommended_system = "SRP"
+    capex_est = 0
+    opex_est = 0
+    
     if st.button(t["btn_screen"], use_container_width=True):
-        if q_target > 3000 and gor < 1000:
-            st.success("الخيار الموصى به: **ESP (Electric Submersible Pump)**" if lang == "العربية" else "RECOMMENDED: **ESP (Electric Submersible Pump)**")
-        elif gor > 800:
-            st.success("الخيار الموصى به: **Gas Lift System**" if lang == "العربية" else "RECOMMENDED: **Gas Lift System**")
+        # خوارزمية الترشيح المعيارية الحقيقية
+        if visc > 300:
+            recommended_system = "PCP (Progressive Cavity Pump) - ملائم جداً للزوجة العالية"
+            capex_est, opex_est = 65000, 120
+        elif gor > 1500 and depth_ft > 10000:
+            recommended_system = "Gas Lift System - الأنسب للغاز العالي والأعماق الكبيرة"
+            capex_est, opex_est = 90000, 150
+        elif q_target > 3500:
+            recommended_system = "ESP (Electric Submersible Pump) - الأفضل لمعدلات الإنتاج العالية"
+            capex_est, opex_est = 120000, 250
         else:
-            st.success("الخيار الموصى به: **SRP (Sucker Rod Pump)**" if lang == "العربية" else "RECOMMENDED: **SRP (Sucker Rod Pump)**")
+            recommended_system = "SRP (Sucker Rod Pump) - الخيار الاقتصادي الأمثل للأعماق والإنتاج المتوسط"
+            capex_est, opex_est = 45000, 80
+
+        st.success(f"📌 **التوصية الهندسية:** {recommended_system}")
+        
+        # عرض التقييم الاقتصادي
+        st.markdown("### 💰 التقييم الاقتصادي المبدئي (Economics Estimation)")
+        ec1, ec2 = st.columns(2)
+        ec1.metric("CAPEX (التكلفة الأولية التقديرية)", f"${capex_est:,.0f}")
+        ec2.metric("OPEX (تكلفة التشغيل اليومية)", f"${opex_est:,.0f} / day")
+        
+        report_data['screening'] = f"Target Production: {q_target} BPD, Depth: {depth_ft} ft, GOR: {gor}, Viscosity: {visc} cP \n-> Recommended System: {recommended_system} \n-> Estimated CAPEX: ${capex_est:,.0f}, OPEX: ${opex_est}/day"
 
 # 2. تصميم SRP
 with tabs[1]:
@@ -143,6 +172,8 @@ with tabs[1]:
     m1.metric(t["p_dia"], f"{p_size:.2f} in")
     m2.metric(t["peak_load"], f"{peak_l:,.0f} lbs")
     m3.metric(t["motor_hp"], f"{hp_req:.1f} HP")
+    
+    report_data['srp'] = f"SRP Design -> Depth: {d_srp} ft, Plunger Size: {p_size:.2f} in, Peak Load: {peak_l:,.0f} lbs, Motor HP: {hp_req:.1f} HP"
 
 # 3. تصميم ESP
 with tabs[2]:
@@ -164,6 +195,8 @@ with tabs[2]:
     e1.metric(t["tdh"], f"{tdh:,.0f} ft")
     e2.metric(t["stages"], f"{stages}")
     e3.metric(t["motor_hp"], f"{esp_hp:.1f} HP")
+    
+    report_data['esp'] = f"ESP Design -> Depth: {d_esp} ft, TDH: {tdh:,.0f} ft, Stages: {stages}, Motor HP: {esp_hp:.1f} HP"
 
 # 4. منحنى IPR
 with tabs[3]:
@@ -180,21 +213,24 @@ with tabs[3]:
     q_arr = q_max * (1 - 0.2*(pwf_arr/p_res) - 0.8*((pwf_arr/p_res)**2))
     
     fig, ax = plt.subplots(figsize=(7, 3.5))
-    ax.plot(q_arr, pwf_arr, color='#0284c7', linewidth=2)
-    ax.scatter([q_test], [p_wf], color='red', label=f'Test Point ({q_test} BPD)')
+    ax.plot(q_arr, pwf_arr, color='#0284c7', linewidth=2, label="Vogel's IPR Curve")
+    ax.scatter([q_test], [p_wf], color='red', s=70, label=f'Operating Test Point ({q_test} BPD)')
     ax.set_xlabel('Flow Rate Q (BPD)')
     ax.set_ylabel('Bottomhole Pressure Pwf (psi)')
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.legend()
     st.pyplot(fig)
     st.info(f"{t['aof']} **{q_max:,.0f} BPD**")
+    
+    report_data['ipr'] = f"IPR Analysis -> Reservoir Pressure: {p_res} psi, Test Rate: {q_test} BPD, AOF: {q_max:,.0f} BPD"
 
 # 5. تحليل الملفات
 with tabs[4]:
     st.subheader("📁 " + ("تحليل الملفات والسجلات" if lang == "العربية" else "File & Log Analysis"))
     up_file = st.file_uploader("Upload Excel / CSV / LAS", type=["xlsx", "csv", "las"])
     if up_file:
-        st.success(f"File uploaded: {up_file.name}")
+        st.success(f"File uploaded successfully: {up_file.name}")
+        report_data['file'] = f"Uploaded File: {up_file.name}"
 
 # 6. المساعد الذكي Gemini
 with tabs[5]:
@@ -207,11 +243,53 @@ with tabs[5]:
         elif q_ai.strip():
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-3.6-flash')
-                with st.spinner("جاري التحليل..." if lang == "العربية" else "Analyzing..."):
-                    lang_prompt = "أجب باللغة العربية." if lang == "العربية" else "Answer in English."
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                with st.spinner("جاري التحليل الهندسي..." if lang == "العربية" else "Analyzing..."):
+                    lang_prompt = "أجب باللغة العربية كخبير هندسة إنتاج بترول." if lang == "العربية" else "Answer in English as a petroleum production expert."
                     res = model.generate_content(f"{lang_prompt} {q_ai}")
                     st.markdown(f"### {t['ai_res']}")
                     st.write(res.text)
+                    report_data['ai'] = f"AI Query: {q_ai} \n Answer: {res.text}"
             except Exception as e:
                 st.error(f"Error: {e}")
+
+# ---------------------------------------------------------
+# قسم تصدير التقرير الهندسي والاقتصادي الشامل
+# ---------------------------------------------------------
+st.divider()
+st.subheader(t["report_title"])
+
+report_content = f"""
+==================================================
+        AL-MUNAIQQIB ENGINEERING PLATFORM REPORT
+        منصة المُنقّب الهندسية - التقرير الشامل
+==================================================
+
+1. SMART SCREENING & ECONOMIC EVALUATION:
+{report_data.get('screening', 'Not evaluated yet.')}
+
+2. SUCKER ROD PUMP (SRP) DESIGN:
+{report_data.get('srp', 'Not calculated yet.')}
+
+3. ELECTRIC SUBMERSIBLE PUMP (ESP) DESIGN:
+{report_data.get('esp', 'Not calculated yet.')}
+
+4. IPR & RESERVOIR PERFORMANCE:
+{report_data.get('ipr', 'Not calculated yet.')}
+
+5. FILE & AI CONSULTATION:
+{report_data.get('file', 'No files uploaded.')}
+{report_data.get('ai', 'No AI queries performed.')}
+
+==================================================
+Generated by Al-Munaqqib Suite | Petroleum Engineering
+==================================================
+"""
+
+st.download_button(
+    label=t["btn_download"],
+    data=report_content,
+    file_name="Al_Munaqqib_Comprehensive_Report.txt",
+    mime="text/plain",
+    use_container_width=True
+)
