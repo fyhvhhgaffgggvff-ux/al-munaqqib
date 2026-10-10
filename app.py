@@ -24,7 +24,7 @@ with st.sidebar:
     lang = st.selectbox("🌐 اختر اللغة / Select Language", ["العربية", "English"])
     api_key = st.text_input("Gemini API Key:", type="password")
     st.divider()
-    st.info("💡 **منصة المُنقّب الهندسية v5.1**\nالمنصة الحقلية المتكاملة لتصميم الرفع الصناعي، تحليل الملفات، والاقتصاديات.")
+    st.info("💡 **منصة المُنقّب الهندسية v5.3**\nالمنصة الحقلية المتكاملة لتصميم الرفع الصناعي، تحليل الملفات، والاقتصاديات.")
 
 # ---------------------------------------------------------
 # قاموس اللغات والترجمة
@@ -33,13 +33,14 @@ T = {
     "العربية": {
         "title": "⚡ منصة المُنقّب الهندسية المتكاملة",
         "subtitle": "النظام الهندسي الحقلي الشامل لترشيح الرفع، تحليل المكامن وسجلات الآبار، التقييم الاقتصادي، والذكاء الاصطناعي",
-        "tabs": ["🎯 الترشيح الذكي والاقتصاديات", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل السجلات والملفات", "🤖 المساعد الذكي"],
+        "tabs": ["🎯 الترشيح الذكي والاقتصاديات", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل السجلات والملفات", "🤖 المساعد الذكي", "📄 التقارير الشاملة"],
         "screening_title": "🎯 نظام الاختيار والترشيح الآلي المعياري (Smart Selector)",
         "target_prod": "الإنتاج المستهدف (BPD):",
         "depth": "العمق العمودي (ft):",
         "gor": "نسبة الغاز للنفط GOR (scf/stb):",
         "visc": "اللزوجة (cP):",
         "btn_screen": "ترشيح النظام الأمثل وحساب التكاليف 🔍",
+        "btn_download_screening": "📥 تنزيل تقرير الترشيح الذكي والاقتصادي فقط",
         "srp_title": "⚙️ تصميم مضخات المكبس (Sucker Rod Pump)",
         "pump_depth": "عمق المضخة (ft):",
         "stroke_len": "طول الشوط (in):",
@@ -62,19 +63,20 @@ T = {
         "ai_prompt": "اطرح سؤالك الهندسي أو استفسارك هنا:",
         "btn_ai": "تحليل الأداء بواسطة Gemini 🧠",
         "ai_res": "💡 التوصية الهندسية:",
-        "report_title": "📄 تصدير التقرير الهندسي والاقتصادي الشامل",
-        "btn_download": "تنزيل التقرير الهندسي الشامل (TXT) 📥"
+        "report_title": "📄 التقرير الهندسي والاقتصادي الشامل",
+        "btn_download_all": "📥 تنزيل التقرير الهندسي الشامل لجميع الأقسام (TXT)"
     },
     "English": {
         "title": "⚡ Al-Munaqqib Engineering Suite",
         "subtitle": "Comprehensive field engineering system for lift screening, log analysis, economics, and AI",
-        "tabs": ["🎯 Smart Screening & Economics", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 Files & Log Analysis", "🤖 AI Assistant"],
+        "tabs": ["🎯 Smart Screening & Economics", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 Files & Log Analysis", "🤖 AI Assistant", "📄 Comprehensive Reports"],
         "screening_title": "🎯 Advanced Automated System Screening & Selection",
         "target_prod": "Target Production (BPD):",
         "depth": "Vertical Depth (ft):",
         "gor": "Gas-Oil Ratio GOR (scf/stb):",
         "visc": "Viscosity (cP):",
         "btn_screen": "Screen Optimal System & Economics 🔍",
+        "btn_download_screening": "📥 Download Smart Screening & Economics Report Only",
         "srp_title": "⚙️ Sucker Rod Pump (SRP) Design",
         "pump_depth": "Pump Depth (ft):",
         "stroke_len": "Stroke Length (in):",
@@ -97,21 +99,17 @@ T = {
         "ai_prompt": "Enter your engineering query here:",
         "btn_ai": "Analyze via Gemini 🧠",
         "ai_res": "💡 Engineering Recommendation:",
-        "report_title": "📄 Export Comprehensive Engineering & Economic Report",
-        "btn_download": "Download Comprehensive Engineering Report (TXT) 📥"
+        "report_title": "📄 Comprehensive Engineering & Economic Report",
+        "btn_download_all": "📥 Download Comprehensive Report for All Sections (TXT)"
     }
 }
 
 t = T[lang]
 
-# ---------------------------------------------------------
-# الواجهة الرئيسية
-# ---------------------------------------------------------
 st.title(t["title"])
 st.caption(t["subtitle"])
 
 tabs = st.tabs(t["tabs"])
-
 report_data = {}
 
 # 1. الترشيح الذكي والتقييم الاقتصادي
@@ -150,6 +148,23 @@ with tabs[0]:
         ec2.metric("OPEX", f"${opex_est:,.0f} / day")
         
         report_data['screening'] = f"Target Production: {q_target} BPD | Depth: {depth_ft} ft | GOR: {gor} | Viscosity: {visc} cP \n-> Recommended System: {recommended_system} \n-> CAPEX: ${capex_est:,.0f} | OPEX: ${opex_est}/day"
+
+    if 'screening' in report_data:
+        st.divider()
+        screening_report_content = f"""
+==================================================
+        التقرير الذكي والتقييم الاقتصادي - منقب
+==================================================
+{report_data['screening']}
+==================================================
+"""
+        st.download_button(
+            label=t["btn_download_screening"],
+            data=screening_report_content.encode('utf-8-sig'),
+            file_name="Smart_Screening_Economic_Report.txt",
+            mime="text/plain;charset=utf-8",
+            use_container_width=True
+        )
 
 # 2. تصميم SRP
 with tabs[1]:
@@ -271,13 +286,12 @@ with tabs[5]:
             except Exception as e:
                 st.error(f"Error: {e}")
 
-# ---------------------------------------------------------
-# قسم تصدير التقرير الهندسي والاقتصادي الشامل (بترميز نظيف)
-# ---------------------------------------------------------
-st.divider()
-st.subheader(t["report_title"])
-
-report_content = f"""
+# 7. التبويب الجديد المخصص للتقارير الشاملة
+with tabs[6]:
+    st.subheader(t["report_title"])
+    st.info("📄 هذا التبويب يتيح لك تحميل التقرير الهندسي والاقتصادي الشامل الذي يجمع كل النتائج من كافة الأقسام (الترشيح، التصاميم، السجلات، والذكاء الاصطناعي) في ملف واحد مرتب.")
+    
+    comprehensive_report_content = f"""
 ==================================================
         AL-MUNAIQQIB ENGINEERING PLATFORM REPORT
           منصة المُنقّب الهندسية - التقرير الشامل
@@ -306,13 +320,10 @@ Generated by Al-Munaqqib Suite | Petroleum Engineering
 ==================================================
 """
 
-# ترميز مدعوم بالكامل للغة العربية والإنجليزية بدون أي تداخل أو رموز غريبة
-report_bytes = report_content.encode('utf-8-sig')
-
-st.download_button(
-    label=t["btn_download"],
-    data=report_bytes,
-    file_name="Al_Munaqqib_Comprehensive_Report.txt",
-    mime="text/plain;charset=utf-8",
-    use_container_width=True
-)
+    st.download_button(
+        label=t["btn_download_all"],
+        data=comprehensive_report_content.encode('utf-8-sig'),
+        file_name="Al_Munaqqib_Comprehensive_Report.txt",
+        mime="text/plain;charset=utf-8",
+        use_container_width=True
+    )
