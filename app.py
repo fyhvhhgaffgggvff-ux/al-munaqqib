@@ -1,329 +1,230 @@
-import streamlit as st
+from __future__ import annotations
+
+import io
+import math
+from datetime import datetime, timezone
+from typing import Any
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import lasio
-import io
-import google.generativeai as genai
+import streamlit as st
 
-# ---------------------------------------------------------
-# إعدادات الصفحة
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="Al-Munaqqib Platform",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+try:
+    import lasio
+except ImportError:  # Friendly runtime message if dependency is missing
+    lasio = None
 
-# ---------------------------------------------------------
-# اختيار اللغة في القائمة الجانبية
-# ---------------------------------------------------------
-with st.sidebar:
-    st.header("⚙️ Settings / الإعدادات")
-    lang = st.selectbox("🌐 اختر اللغة / Select Language", ["العربية", "English"])
-    api_key = st.text_input("Gemini API Key:", type="password")
-    st.divider()
-    st.info("💡 **منصة المُنقّب الهندسية v5.3**\nالمنصة الحقلية المتكاملة لتصميم الرفع الصناعي، تحليل الملفات، والاقتصاديات.")
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
-# ---------------------------------------------------------
-# قاموس اللغات والترجمة
-# ---------------------------------------------------------
-T = {
+st.set_page_config(page_title="Al-Munaqqib | المُنقّب", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
+
+TRANSLATIONS = {
     "العربية": {
         "title": "⚡ منصة المُنقّب الهندسية المتكاملة",
-        "subtitle": "النظام الهندسي الحقلي الشامل لترشيح الرفع، تحليل المكامن وسجلات الآبار، التقييم الاقتصادي، والذكاء الاصطناعي",
-        "tabs": ["🎯 الترشيح الذكي والاقتصاديات", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل السجلات والملفات", "🤖 المساعد الذكي", "📄 التقارير الشاملة"],
-        "screening_title": "🎯 نظام الاختيار والترشيح الآلي المعياري (Smart Selector)",
-        "target_prod": "الإنتاج المستهدف (BPD):",
-        "depth": "العمق العمودي (ft):",
-        "gor": "نسبة الغاز للنفط GOR (scf/stb):",
-        "visc": "اللزوجة (cP):",
-        "btn_screen": "ترشيح النظام الأمثل وحساب التكاليف 🔍",
-        "btn_download_screening": "📥 تنزيل تقرير الترشيح الذكي والاقتصادي فقط",
-        "srp_title": "⚙️ تصميم مضخات المكبس (Sucker Rod Pump)",
-        "pump_depth": "عمق المضخة (ft):",
-        "stroke_len": "طول الشوط (in):",
-        "spm": "عدد الأشواط (SPM):",
-        "p_dia": "قطر المكبس",
-        "peak_load": "أقصى حمل (Peak Load)",
-        "motor_hp": "قدرة المحرك",
-        "esp_title": "⚡ تصميم المضخات الكهربائية الغاطسة (ESP)",
-        "head_stg": "الرفع لكل مرحلة (ft):",
-        "p_surf": "الضغط السطحي (psi):",
-        "tdh": "إجمالي الرفع (TDH)",
-        "stages": "عدد المراحل",
-        "ipr_title": "📈 منحنى أداء التدفق (Vogel's IPR)",
-        "p_res": "ضغط المكمن (psi):",
-        "p_wf": "ضغط التدفق Pwf (psi):",
-        "q_test": "معدل تدفق الاختبار (BPD):",
-        "aof": "القدرة الإنتاجية القصوى للمكمن (AOF):",
-        "file_title": "📁 تحليل سجلات الآبار وملفات البيانات (LAS / CSV / Excel)",
-        "ai_title": "🤖 استشارات الذكاء الاصطناعي الهندسية",
-        "ai_prompt": "اطرح سؤالك الهندسي أو استفسارك هنا:",
-        "btn_ai": "تحليل الأداء بواسطة Gemini 🧠",
-        "ai_res": "💡 التوصية الهندسية:",
-        "report_title": "📄 التقرير الهندسي والاقتصادي الشامل",
-        "btn_download_all": "📥 تنزيل التقرير الهندسي الشامل لجميع الأقسام (TXT)"
+        "subtitle": "أدوات أولية لهندسة الإنتاج وتحليل بيانات الآبار — تحقّق من النتائج قبل استخدامها ميدانياً.",
+        "tabs": ["🎯 الترشيح والاقتصاديات", "⚙️ تصميم SRP", "⚡ تصميم ESP", "📈 منحنى IPR", "📁 تحليل الملفات", "🤖 المساعد الذكي", "📄 التقارير"],
+        "target": "الإنتاج المستهدف (BPD)", "depth": "العمق (ft)", "gor": "نسبة الغاز إلى النفط (scf/stb)", "visc": "اللزوجة (cP)",
+        "screen": "ترشيح نظام الرفع", "srp": "تصميم مضخة القضيب (SRP)", "esp": "تصميم المضخة الكهربائية الغاطسة (ESP)",
+        "ipr": "منحنى أداء التدفق (Vogel IPR)", "files": "تحليل سجلات الآبار والبيانات", "ai": "المساعد الهندسي بالذكاء الاصطناعي", "reports": "التقارير الشاملة",
     },
     "English": {
         "title": "⚡ Al-Munaqqib Engineering Suite",
-        "subtitle": "Comprehensive field engineering system for lift screening, log analysis, economics, and AI",
-        "tabs": ["🎯 Smart Screening & Economics", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 Files & Log Analysis", "🤖 AI Assistant", "📄 Comprehensive Reports"],
-        "screening_title": "🎯 Advanced Automated System Screening & Selection",
-        "target_prod": "Target Production (BPD):",
-        "depth": "Vertical Depth (ft):",
-        "gor": "Gas-Oil Ratio GOR (scf/stb):",
-        "visc": "Viscosity (cP):",
-        "btn_screen": "Screen Optimal System & Economics 🔍",
-        "btn_download_screening": "📥 Download Smart Screening & Economics Report Only",
-        "srp_title": "⚙️ Sucker Rod Pump (SRP) Design",
-        "pump_depth": "Pump Depth (ft):",
-        "stroke_len": "Stroke Length (in):",
-        "spm": "Strokes Per Minute (SPM):",
-        "p_dia": "Plunger Diameter",
-        "peak_load": "Peak Load",
-        "motor_hp": "Motor Horsepower",
-        "esp_title": "⚡ Electric Submersible Pump (ESP) Design",
-        "head_stg": "Head per Stage (ft):",
-        "p_surf": "Surface Pressure (psi):",
-        "tdh": "Total Dynamic Head (TDH)",
-        "stages": "Total Stages",
-        "ipr_title": "📈 Inflow Performance Relationship (Vogel's IPR)",
-        "p_res": "Reservoir Pressure (psi):",
-        "p_wf": "Flowing BHP (psi):",
-        "q_test": "Test Flow Rate (BPD):",
-        "aof": "Absolute Open Flow (AOF):",
-        "file_title": "📁 Well Logs & Data Analysis (LAS / CSV / Excel)",
-        "ai_title": "🤖 AI Engineering Consultation",
-        "ai_prompt": "Enter your engineering query here:",
-        "btn_ai": "Analyze via Gemini 🧠",
-        "ai_res": "💡 Engineering Recommendation:",
-        "report_title": "📄 Comprehensive Engineering & Economic Report",
-        "btn_download_all": "📥 Download Comprehensive Report for All Sections (TXT)"
-    }
+        "subtitle": "Preliminary production-engineering tools and well-data analysis. Verify results before field use.",
+        "tabs": ["🎯 Screening & Economics", "⚙️ SRP Design", "⚡ ESP Design", "📈 IPR Curve", "📁 File Analysis", "🤖 AI Assistant", "📄 Reports"],
+        "target": "Target production (BPD)", "depth": "Depth (ft)", "gor": "Gas-oil ratio (scf/stb)", "visc": "Viscosity (cP)",
+        "screen": "Artificial-lift screening", "srp": "Sucker Rod Pump (SRP)", "esp": "Electric Submersible Pump (ESP)",
+        "ipr": "Inflow Performance Relationship (Vogel IPR)", "files": "Well-log and data analysis", "ai": "AI engineering assistant", "reports": "Comprehensive reports",
+    },
 }
 
-t = T[lang]
+from core import screen_lift_system, calculate_srp, calculate_esp, vogel_ipr, read_uploaded_data, summarize_dataframe, make_report
+
+# ---------- UI ----------
+with st.sidebar:
+    st.header("⚙️ Settings / الإعدادات")
+    lang = st.selectbox("🌐 اللغة / Language", ["العربية", "English"])
+    api_key = st.text_input("Gemini API key (optional)", type="password", help="لا تضع المفتاح داخل الكود أو GitHub. يُستخدم فقط عند طلب المساعد.")
+    st.caption("Al-Munaqqib v6 — preliminary engineering tool")
+t = TRANSLATIONS[lang]
 
 st.title(t["title"])
 st.caption(t["subtitle"])
-
+st.warning("تنبيه هندسي: النتائج تقديرية وليست بديلاً عن تصميم معتمد أو مراجعة مهندس مختص. راجع الوحدات والافتراضات قبل أي استخدام ميداني." if lang == "العربية" else "Engineering notice: results are estimates, not an approved design. Verify units and assumptions before field use.")
 tabs = st.tabs(t["tabs"])
-report_data = {}
+report: dict[str, str] = {}
 
-# 1. الترشيح الذكي والتقييم الاقتصادي
 with tabs[0]:
-    st.subheader(t["screening_title"])
+    st.subheader(t["screen"])
     c1, c2 = st.columns(2)
     with c1:
-        q_target = st.number_input(t["target_prod"], value=2500, step=100)
-        depth_ft = st.number_input(t["depth"], value=7000, step=500)
+        q_target = st.number_input(t["target"], min_value=1.0, value=2500.0, step=100.0)
+        depth = st.number_input(t["depth"], min_value=1.0, value=7000.0, step=250.0)
     with c2:
-        gor = st.number_input(t["gor"], value=500, step=50)
-        visc = st.number_input(t["visc"], value=15.0, step=1.0)
-        
-    recommended_system = "SRP"
-    capex_est, opex_est = 0, 0
-    
-    if st.button(t["btn_screen"], use_container_width=True):
-        if visc > 300:
-            recommended_system = "PCP (Progressive Cavity Pump)"
-            capex_est, opex_est = 65000, 120
-        elif gor > 1500 and depth_ft > 10000:
-            recommended_system = "Gas Lift System"
-            capex_est, opex_est = 90000, 150
-        elif q_target > 3500:
-            recommended_system = "ESP (Electric Submersible Pump)"
-            capex_est, opex_est = 120000, 250
-        else:
-            recommended_system = "SRP (Sucker Rod Pump)"
-            capex_est, opex_est = 45000, 80
-
-        st.success(f"📌 **التوصية الهندسية / Recommendation:** {recommended_system}")
-        
-        st.markdown("### 💰 التقييم الاقتصادي المبدئي (Economics Estimation)")
-        ec1, ec2 = st.columns(2)
-        ec1.metric("CAPEX", f"${capex_est:,.0f}")
-        ec2.metric("OPEX", f"${opex_est:,.0f} / day")
-        
-        report_data['screening'] = f"Target Production: {q_target} BPD | Depth: {depth_ft} ft | GOR: {gor} | Viscosity: {visc} cP \n-> Recommended System: {recommended_system} \n-> CAPEX: ${capex_est:,.0f} | OPEX: ${opex_est}/day"
-
-    if 'screening' in report_data:
-        st.divider()
-        screening_report_content = f"""
-==================================================
-        التقرير الذكي والتقييم الاقتصادي - منقب
-==================================================
-{report_data['screening']}
-==================================================
-"""
-        st.download_button(
-            label=t["btn_download_screening"],
-            data=screening_report_content.encode('utf-8-sig'),
-            file_name="Smart_Screening_Economic_Report.txt",
-            mime="text/plain;charset=utf-8",
-            use_container_width=True
-        )
-
-# 2. تصميم SRP
-with tabs[1]:
-    st.subheader(t["srp_title"])
-    col1, col2 = st.columns(2)
-    with col1:
-        d_srp = st.number_input(t["pump_depth"], value=5000, key="dsrp")
-        q_srp = st.number_input(t["target_prod"], value=300, key="qsrp")
-    with col2:
-        s_len = st.number_input(t["stroke_len"], value=86, key="slen")
-        spm = st.number_input(t["spm"], value=12, key="spm")
-        
-    p_size = np.sqrt(q_srp / (0.1166 * s_len * spm * 0.8)) if (s_len * spm) > 0 else 1.5
-    peak_l = (0.433 * d_srp * (np.pi * (p_size/2)**2)) + (d_srp * 1.6)
-    hp_req = (peak_l * s_len * spm) / 375000 + 5
-    
-    st.divider()
-    m1, m2, m3 = st.columns(3)
-    m1.metric(t["p_dia"], f"{p_size:.2f} in")
-    m2.metric(t["peak_load"], f"{peak_l:,.0f} lbs")
-    m3.metric(t["motor_hp"], f"{hp_req:.1f} HP")
-    
-    report_data['srp'] = f"SRP Design -> Depth: {d_srp} ft | Plunger Size: {p_size:.2f} in | Peak Load: {peak_l:,.0f} lbs | Motor HP: {hp_req:.1f} HP"
-
-# 3. تصميم ESP
-with tabs[2]:
-    st.subheader(t["esp_title"])
-    col1, col2 = st.columns(2)
-    with col1:
-        d_esp = st.number_input(t["pump_depth"], value=7500, key="desp")
-        q_esp = st.number_input(t["target_prod"], value=4000, key="qesp")
-    with col2:
-        h_stg = st.number_input(t["head_stg"], value=25, key="hstg")
-        p_surf = st.number_input(t["p_surf"], value=200, key="psurf")
-        
-    tdh = d_esp + (p_surf * 2.31)
-    stages = int(tdh / h_stg) if h_stg > 0 else 100
-    esp_hp = (q_esp * tdh) / 135000
-    
-    st.divider()
-    e1, e2, e3 = st.columns(3)
-    e1.metric(t["tdh"], f"{tdh:,.0f} ft")
-    e2.metric(t["stages"], f"{stages}")
-    e3.metric(t["motor_hp"], f"{esp_hp:.1f} HP")
-    
-    report_data['esp'] = f"ESP Design -> Depth: {d_esp} ft | TDH: {tdh:,.0f} ft | Stages: {stages} | Motor HP: {esp_hp:.1f} HP"
-
-# 4. منحنى IPR
-with tabs[3]:
-    st.subheader(t["ipr_title"])
-    ic1, ic2 = st.columns(2)
-    with ic1:
-        p_res = st.number_input(t["p_res"], value=3000)
-        p_wf = st.number_input(t["p_wf"], value=2000)
-    with ic2:
-        q_test = st.number_input(t["q_test"], value=1000)
-        
-    q_max = q_test / (1 - 0.2*(p_wf/p_res) - 0.8*((p_wf/p_res)**2)) if p_res > p_wf else q_test*1.5
-    pwf_arr = np.linspace(0, p_res, 40)
-    q_arr = q_max * (1 - 0.2*(pwf_arr/p_res) - 0.8*((pwf_arr/p_res)**2))
-    
-    fig, ax = plt.subplots(figsize=(7, 3.5))
-    ax.plot(q_arr, pwf_arr, color='#0284c7', linewidth=2, label="Vogel's IPR Curve")
-    ax.scatter([q_test], [p_wf], color='red', s=70, label=f'Operating Test Point ({q_test} BPD)')
-    ax.set_xlabel('Flow Rate Q (BPD)')
-    ax.set_ylabel('Bottomhole Pressure Pwf (psi)')
-    ax.grid(True, linestyle='--', alpha=0.5)
-    ax.legend()
-    st.pyplot(fig)
-    st.info(f"{t['aof']} **{q_max:,.0f} BPD**")
-    
-    report_data['ipr'] = f"IPR Analysis -> Reservoir Pressure: {p_res} psi | Test Rate: {q_test} BPD | AOF: {q_max:,.0f} BPD"
-
-# 5. تحليل السجلات والملفات
-with tabs[4]:
-    st.subheader(t["file_title"])
-    uploaded_file = st.file_uploader("Upload LAS, CSV, or Excel File", type=["las", "csv", "xlsx", "xls"])
-    
-    if uploaded_file is not None:
-        file_name = uploaded_file.name
-        st.success(f"✅ File uploaded successfully: {file_name}")
+        gor = st.number_input(t["gor"], min_value=0.0, value=500.0, step=50.0)
+        viscosity = st.number_input(t["visc"], min_value=0.1, value=15.0, step=1.0)
+    if st.button("ترشيح النظام وحساب التقدير" if lang == "العربية" else "Screen system and estimate costs", type="primary", use_container_width=True):
         try:
-            if file_name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-                st.dataframe(df.head(10))
-                report_data['file'] = f"Analyzed File: {file_name} | Rows: {len(df)} | Columns: {len(df.columns)}"
-            elif file_name.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(uploaded_file)
-                st.dataframe(df.head(10))
-                report_data['file'] = f"Analyzed File: {file_name} | Rows: {len(df)} | Columns: {len(df.columns)}"
-            elif file_name.endswith('.las'):
-                bytes_data = uploaded_file.read()
-                las_string = bytes_data.decode('utf-8', errors='ignore')
-                las = lasio.read(io.StringIO(las_string))
-                st.info(f"WELL NAME: {las.well.WELL.value}")
-                df_las = las.df().reset_index()
-                st.dataframe(df_las.head(10))
-                report_data['file'] = f"Analyzed LAS File: {file_name} | Well: {las.well.WELL.value}"
+            result = screen_lift_system(q_target, depth, gor, viscosity)
+            st.success(f"التوصية المبدئية: {result['system']}" if lang == "العربية" else f"Preliminary recommendation: {result['system']}")
+            a, b = st.columns(2)
+            a.metric("CAPEX estimate", f"${result['capex_usd_estimate']:,.0f}")
+            b.metric("OPEX estimate/day", f"${result['opex_usd_day_estimate']:,.0f}")
+            st.info(result["note"])
+            report["Screening"] = f"Production={q_target} BPD; depth={depth} ft; GOR={gor}; viscosity={viscosity} cP; recommendation={result['system']}; CAPEX estimate=${result['capex_usd_estimate']}; OPEX estimate=${result['opex_usd_day_estimate']}/day. {result['note']}"
+        except ValueError as e:
+            st.error(str(e))
+
+with tabs[1]:
+    st.subheader(t["srp"])
+    a, b = st.columns(2)
+    with a:
+        srp_depth = st.number_input("Pump depth (ft)", min_value=1.0, value=5000.0, key="srp_depth")
+        srp_q = st.number_input("Production (BPD)", min_value=1.0, value=300.0, key="srp_q")
+    with b:
+        stroke = st.number_input("Stroke length (in)", min_value=1.0, value=86.0, key="srp_stroke")
+        spm = st.number_input("Strokes per minute (SPM)", min_value=0.1, value=12.0, key="srp_spm")
+        eff = st.slider("Volumetric efficiency assumption", min_value=0.1, max_value=1.0, value=0.8, step=0.05)
+    try:
+        result = calculate_srp(srp_depth, srp_q, stroke, spm, eff)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Plunger diameter (in, estimate)", f"{result['plunger_diameter_in_estimate']:.2f}")
+        m2.metric("Peak load (lbf, rough estimate)", f"{result['peak_load_lbf_estimate']:,.0f}")
+        m3.metric("Motor HP (rough estimate)", f"{result['motor_hp_estimate']:.1f}")
+        st.caption("Simplified estimate only. It does not replace API RP 11L, rod-string design, fluid level, dynamometer cards, friction or manufacturer selection.")
+        report["SRP"] = str(result) + f" Inputs: depth={srp_depth} ft, rate={srp_q} BPD, stroke={stroke} in, SPM={spm}, efficiency={eff}. Simplified estimate only."
+    except ValueError as e:
+        st.error(str(e))
+
+with tabs[2]:
+    st.subheader(t["esp"])
+    a, b = st.columns(2)
+    with a:
+        esp_depth = st.number_input("Pump depth (ft)", min_value=1.0, value=7500.0, key="esp_depth")
+        esp_q = st.number_input("Production (BPD)", min_value=1.0, value=4000.0, key="esp_q")
+    with b:
+        head_stage = st.number_input("Head per stage (ft)", min_value=0.1, value=25.0, key="esp_head")
+        surface_pressure = st.number_input("Surface pressure (psi)", min_value=0.0, value=200.0, key="esp_pressure")
+    try:
+        result = calculate_esp(esp_depth, esp_q, head_stage, surface_pressure)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("TDH estimate (ft)", f"{result['tdh_ft_estimate']:,.0f}")
+        m2.metric("Stages estimate", f"{int(result['stages_estimate'])}")
+        m3.metric("HP placeholder", f"{result['motor_hp_placeholder_estimate']:.1f}")
+        st.caption("TDH and stage count are simplified. The HP figure is only a placeholder and must not be used for motor selection without fluid specific gravity, efficiency, friction losses, intake pressure and pump curves.")
+        report["ESP"] = str(result) + f" Inputs: depth={esp_depth} ft, rate={esp_q} BPD, head/stage={head_stage} ft, surface pressure={surface_pressure} psi. Validate with fluid gradient, friction and vendor curves."
+    except ValueError as e:
+        st.error(str(e))
+
+with tabs[3]:
+    st.subheader(t["ipr"])
+    a, b = st.columns(2)
+    with a:
+        p_res = st.number_input("Reservoir pressure Pres (psi)", min_value=1.0, value=3000.0)
+        q_test = st.number_input("Test flow rate (BPD)", min_value=0.1, value=1000.0)
+    with b:
+        p_wf = st.number_input("Test flowing pressure Pwf (psi)", min_value=0.0, value=2000.0)
+    try:
+        qmax, q_arr, pwf_arr = vogel_ipr(p_res, q_test, p_wf)
+        fig, ax = plt.subplots(figsize=(9, 4.5))
+        ax.plot(q_arr, pwf_arr, linewidth=2, label="Vogel IPR")
+        ax.scatter([q_test], [p_wf], color="red", zorder=3, label=f"Test point ({q_test:g} BPD)")
+        ax.set_xlabel("Flow rate Q (BPD)")
+        ax.set_ylabel("Bottomhole flowing pressure Pwf (psi)")
+        ax.grid(True, linestyle="--", alpha=0.4)
+        ax.legend()
+        fig.tight_layout()
+        st.pyplot(fig)
+        plt.close(fig)
+        st.metric("AOF estimate (BPD)", f"{qmax:,.1f}")
+        st.caption("Vogel correlation is an approximation for suitable solution-gas-drive reservoirs; verify applicability and test data quality.")
+        report["IPR"] = f"Pres={p_res} psi; test rate={q_test} BPD; test Pwf={p_wf} psi; AOF estimate={qmax:.2f} BPD. Vogel applicability must be checked."
+    except ValueError as e:
+        st.error(str(e))
+
+with tabs[4]:
+    st.subheader(t["files"])
+    uploaded = st.file_uploader("Upload LAS, CSV, XLSX or XLS", type=["las", "csv", "xlsx", "xls"])
+    if uploaded:
+        try:
+            df, meta = read_uploaded_data(uploaded.name, uploaded.getvalue())
+            st.success(f"Loaded {meta['format']} · {meta['rows']:,} rows × {meta['columns']} columns")
+            x1, x2, x3 = st.columns(3)
+            x1.metric("Rows", f"{meta['rows']:,}")
+            x2.metric("Columns", meta["columns"])
+            x3.metric("Missing cells", f"{meta['missing_cells']:,}")
+            if meta.get("well_name"):
+                st.write(f"**Well:** {meta['well_name']}")
+            st.write("**Data preview**")
+            st.dataframe(df.head(100), use_container_width=True)
+            summary = summarize_dataframe(df)
+            st.write("**Curve / column statistics**")
+            st.dataframe(summary, use_container_width=True)
+            numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and df[c].notna().any()]
+            if len(numeric_cols) >= 1:
+                default_x = meta.get("depth_curve") if meta.get("depth_curve") in numeric_cols else numeric_cols[0]
+                x_col = st.selectbox("X axis (depth or index)", numeric_cols, index=numeric_cols.index(default_x))
+                y_candidates = [c for c in numeric_cols if c != x_col]
+                if y_candidates:
+                    y_cols = st.multiselect("Curves to plot", y_candidates, default=y_candidates[:min(3, len(y_candidates))])
+                    if y_cols:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        plot_df = df[[x_col] + y_cols].dropna(subset=[x_col]).sort_values(x_col)
+                        for col in y_cols:
+                            ax.plot(plot_df[col], plot_df[x_col], label=str(col), linewidth=1)
+                        ax.set_xlabel("Curve value")
+                        ax.set_ylabel(str(x_col))
+                        ax.invert_yaxis() if "depth" in x_col.lower() or x_col.lower() in {"dept", "depth", "md", "tvd"} else None
+                        ax.grid(True, alpha=0.3)
+                        ax.legend(loc="best")
+                        fig.tight_layout()
+                        st.pyplot(fig)
+                        plt.close(fig)
+            csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("Download normalized data as CSV", csv_bytes, file_name="munaqqib_normalized_data.csv", mime="text/csv")
+            st.download_button("Download column statistics as CSV", summary.to_csv(index=False).encode("utf-8-sig"), file_name="munaqqib_curve_statistics.csv", mime="text/csv")
+            report["File analysis"] = f"File={uploaded.name}; format={meta['format']}; rows={meta['rows']}; columns={meta['columns']}; missing cells={meta['missing_cells']}; columns={', '.join(map(str, df.columns))}."
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Could not analyze this file: {e}")
+            st.caption("Check that the file is not corrupt, the extension matches its format, and required packages are installed.")
 
-# 6. المساعد الذكي Gemini
 with tabs[5]:
-    st.subheader(t["ai_title"])
-    q_ai = st.text_area(t["ai_prompt"])
-    
-    if st.button(t["btn_ai"], use_container_width=True):
-        if not api_key:
-            st.error("⚠️ Please provide Gemini API Key in the sidebar.")
-        elif q_ai.strip():
+    st.subheader(t["ai"])
+    prompt = st.text_area("اكتب سؤالك الهندسي / Enter your engineering question", height=140)
+    if st.button("تحليل السؤال بواسطة Gemini / Ask Gemini", use_container_width=True):
+        if not api_key.strip():
+            st.error("أدخل Gemini API key في الإعدادات أولاً. / Add your Gemini API key in Settings first.")
+        elif not prompt.strip():
+            st.error("اكتب السؤال أولاً. / Enter a question first.")
+        elif genai is None:
+            st.error("Google GenAI SDK is not installed. Run pip install -r requirements.txt.")
+        else:
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                with st.spinner("Analyzing..."):
-                    res = model.generate_content(f"Answer professionally as a petroleum production expert. {q_ai}")
-                    st.markdown(f"### {t['ai_res']}")
-                    st.write(res.text)
-                    report_data['ai'] = f"AI Query: {q_ai} \n Answer: {res.text}"
+                with st.spinner("جارٍ التحليل... / Analyzing..."):
+                    client = genai.Client(api_key=api_key.strip())
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents="You are a cautious petroleum engineering assistant. State assumptions, units, uncertainty, and when field/vendor verification is needed. Do not invent measured data. Question: " + prompt.strip(),
+                    )
+                answer = response.text or "No text response returned."
+                st.markdown("### التوصية / Recommendation")
+                st.write(answer)
+                report["AI consultation"] = f"Question: {prompt}\nAnswer: {answer}"
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Gemini request failed: {e}")
 
-# 7. التبويب الجديد المخصص للتقارير الشاملة
 with tabs[6]:
-    st.subheader(t["report_title"])
-    st.info("📄 هذا التبويب يتيح لك تحميل التقرير الهندسي والاقتصادي الشامل الذي يجمع كل النتائج من كافة الأقسام (الترشيح، التصاميم، السجلات، والذكاء الاصطناعي) في ملف واحد مرتب.")
-    
-    comprehensive_report_content = f"""
-==================================================
-        AL-MUNAIQQIB ENGINEERING PLATFORM REPORT
-          منصة المُنقّب الهندسية - التقرير الشامل
-==================================================
+    st.subheader(t["reports"])
+    st.write("يضم التقرير النتائج التي تم إنشاؤها في التبويبات الحالية خلال جلسة التطبيق. شغّل الحساب أو التحليل المطلوب أولاً، ثم نزّل التقرير." if lang == "العربية" else "The report includes results generated in the current app session. Run the relevant calculation or analysis first, then download.")
+    if report:
+        st.json(report)
+    else:
+        st.info("لا توجد نتائج محفوظة في هذه الجلسة بعد." if lang == "العربية" else "No results recorded in this session yet.")
+    content = make_report(report)
+    st.download_button("📥 تنزيل التقرير الشامل TXT", content.encode("utf-8-sig"), file_name="Al_Munaqqib_Preliminary_Report.txt", mime="text/plain;charset=utf-8", use_container_width=True)
 
-1. SMART SCREENING & ECONOMIC EVALUATION:
-{report_data.get('screening', 'Not evaluated yet.')}
-
-2. SUCKER ROD PUMP (SRP) DESIGN:
-{report_data.get('srp', 'Not calculated yet.')}
-
-3. ELECTRIC SUBMERSIBLE PUMP (ESP) DESIGN:
-{report_data.get('esp', 'Not calculated yet.')}
-
-4. IPR & RESERVOIR PERFORMANCE:
-{report_data.get('ipr', 'Not calculated yet.')}
-
-5. WELL LOGS & FILE ANALYSIS:
-{report_data.get('file', 'No files analyzed.')}
-
-6. AI CONSULTATION NOTES:
-{report_data.get('ai', 'No AI queries performed.')}
-
-==================================================
-Generated by Al-Munaqqib Suite | Petroleum Engineering
-==================================================
-"""
-
-    st.download_button(
-        label=t["btn_download_all"],
-        data=comprehensive_report_content.encode('utf-8-sig'),
-        file_name="Al_Munaqqib_Comprehensive_Report.txt",
-        mime="text/plain;charset=utf-8",
-        use_container_width=True
-    )
+st.divider()
+st.caption("Al-Munaqqib v6 · Preliminary educational/engineering support only · Keep API keys private.")
